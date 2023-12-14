@@ -18,12 +18,12 @@ BOOST_VERSION := 1.78.0
 EIGEN_VERSION := 3.4.0
 SUNDIALS_VERSION := 6.1.1
 TBB_VERSION := 2020.3
-RAPIDJSON_ARCHIVE := build/archives/rapidjson-$(RAPIDJSON_VERSION).tar.gz
+RAPIDJSON_ARCHIVE := _build/archives/rapidjson-$(RAPIDJSON_VERSION).tar.gz
 
-STAN_ARCHIVE := build/archives/stan-v$(STAN_VERSION).tar.gz
-MATH_ARCHIVE := build/archives/math-v$(MATH_VERSION).tar.gz
+STAN_ARCHIVE := _build/archives/stan-v$(STAN_VERSION).tar.gz
+MATH_ARCHIVE := _build/archives/math-v$(MATH_VERSION).tar.gz
 HTTP_ARCHIVES := $(STAN_ARCHIVE) $(MATH_ARCHIVE) $(RAPIDJSON_ARCHIVE)
-HTTP_ARCHIVES_EXPANDED := build/stan-$(STAN_VERSION) build/math-$(MATH_VERSION) build/rapidjson-$(RAPIDJSON_VERSION)
+HTTP_ARCHIVES_EXPANDED := _build/stan-$(STAN_VERSION) _build/math-$(MATH_VERSION) _build/rapidjson-$(RAPIDJSON_VERSION)
 
 SUNDIALS_LIBRARIES := ex_stan/lib/libsundials_nvecserial.a ex_stan/lib/libsundials_cvodes.a ex_stan/lib/libsundials_idas.a ex_stan/lib/libsundials_kinsol.a
 TBB_LIBRARIES := ex_stan/lib/libtbb.so
@@ -44,96 +44,96 @@ default: $(LIBRARIES) $(INCLUDES) $(STANC) # $(PRECOMPILED_OBJECTS)
 ###############################################################################
 # Download archives via HTTP and extract them
 ###############################################################################
-build/archives:
-	@mkdir -p build/archives
+_build/archives:
+	@mkdir -p _build/archives
 
-$(RAPIDJSON_ARCHIVE): | build/archives
+$(RAPIDJSON_ARCHIVE): | _build/archives
 	@echo downloading $@
 	@curl --silent --location https://github.com/Tencent/rapidjson/archive/v$(RAPIDJSON_VERSION).tar.gz -o $@
 
-$(STAN_ARCHIVE): | build/archives
+$(STAN_ARCHIVE): | _build/archives
 	@echo downloading $@
 	@curl --silent --location https://github.com/stan-dev/stan/archive/v$(STAN_VERSION).tar.gz -o $@
 
-$(MATH_ARCHIVE): | build/archives
+$(MATH_ARCHIVE): | _build/archives
 	@echo downloading $@
 	@curl --silent --location https://github.com/stan-dev/math/archive/v$(MATH_VERSION).tar.gz -o $@
 
-build/rapidjson-$(RAPIDJSON_VERSION): $(RAPIDJSON_ARCHIVE)
-build/stan-$(STAN_VERSION): $(STAN_ARCHIVE)
-build/math-$(MATH_VERSION): $(MATH_ARCHIVE)
+_build/rapidjson-$(RAPIDJSON_VERSION): $(RAPIDJSON_ARCHIVE)
+_build/stan-$(STAN_VERSION): $(STAN_ARCHIVE)
+_build/math-$(MATH_VERSION): $(MATH_ARCHIVE)
 
 $(HTTP_ARCHIVES_EXPANDED):
 	@echo extracting archive $<
-	tar -C build -zxf $<
+	tar -C _build -zxf $<
 	touch $@
 
 ###############################################################################
 # Download and install stanc
 ###############################################################################
 ifeq ($(shell uname -s),Darwin)
-build/stanc:
+_build/stanc:
 	curl --location https://github.com/stan-dev/stanc3/releases/download/v$(STANC_VERSION)/mac-stanc -o $@ --retry 5 --fail
 else
-build/stanc:
+_build/stanc:
 	curl --location https://github.com/stan-dev/stanc3/releases/download/v$(STANC_VERSION)/linux-stanc -o $@ --retry 5 --fail
 endif
 
-$(STANC): build/stanc
+$(STANC): _build/stanc
 	rm -f $@ && cp -r $< $@ && chmod u+x $@
 
 ###############################################################################
 # rapidjson
 ###############################################################################
-ex_stan/include/rapidjson: build/rapidjson-$(RAPIDJSON_VERSION)/include/rapidjson | build/rapidjson-$(RAPIDJSON_VERSION)
+ex_stan/include/rapidjson: _build/rapidjson-$(RAPIDJSON_VERSION)/include/rapidjson | _build/rapidjson-$(RAPIDJSON_VERSION)
 	@mkdir -p ex_stan/include
 	@rm -rf $@
 	cp -r $< $@
 
-build/rapidjson-$(RAPIDJSON_VERSION)/include/rapidjson: | build/rapidjson-$(RAPIDJSON_VERSION)
+_build/rapidjson-$(RAPIDJSON_VERSION)/include/rapidjson: | _build/rapidjson-$(RAPIDJSON_VERSION)
 
 ###############################################################################
 # Make local copies of C++ source code used by Stan
 ###############################################################################
 
-ex_stan/include/stan: | build/stan-$(STAN_VERSION)
+ex_stan/include/stan: | _build/stan-$(STAN_VERSION)
 	@mkdir -p ex_stan/include
 	@rm -rf $@
-	cp -r build/stan-$(STAN_VERSION)/src/stan $@
+	cp -r _build/stan-$(STAN_VERSION)/src/stan $@
 
-ex_stan/include/stan/math: | build/math-$(MATH_VERSION)
+ex_stan/include/stan/math: | _build/math-$(MATH_VERSION)
 	@mkdir -p ex_stan/include/stan
 	@rm -rf $@ ex_stan/include/stan/math.hpp ex_stan/include/stan/math
-	cp build/math-$(MATH_VERSION)/stan/math.hpp ex_stan/include/stan
-	cp -r build/math-$(MATH_VERSION)/stan/math ex_stan/include/stan
+	cp _build/math-$(MATH_VERSION)/stan/math.hpp ex_stan/include/stan
+	cp -r _build/math-$(MATH_VERSION)/stan/math ex_stan/include/stan
 
-ex_stan/include/boost: | build/math-$(MATH_VERSION)
+ex_stan/include/boost: | _build/math-$(MATH_VERSION)
 	@mkdir -p ex_stan/include
 	@rm -rf $@
-	cp -r build/math-$(MATH_VERSION)/lib/boost_$(BOOST_VERSION)/boost $@
+	cp -r _build/math-$(MATH_VERSION)/lib/boost_$(BOOST_VERSION)/boost $@
 
 EIGEN_INCLUDES := Eigen unsupported
-ex_stan/include/Eigen: | build/math-$(MATH_VERSION)
+ex_stan/include/Eigen: | _build/math-$(MATH_VERSION)
 	@mkdir -p ex_stan/include
 	@rm -rf $(addprefix ex_stan/include/,$(EIGEN_INCLUDES))
-	cp -r $(addprefix build/math-$(MATH_VERSION)/lib/eigen_$(EIGEN_VERSION)/,$(EIGEN_INCLUDES)) ex_stan/include
+	cp -r $(addprefix _build/math-$(MATH_VERSION)/lib/eigen_$(EIGEN_VERSION)/,$(EIGEN_INCLUDES)) ex_stan/include
 
 SUNDIALS_INCLUDES := cvodes idas kinsol nvector sundials sunlinsol sunmatrix sunmemory sunnonlinsol stan_sundials_printf_override.hpp sundials_debug.h
-ex_stan/include/sundials: | build/math-$(MATH_VERSION)
+ex_stan/include/sundials: | _build/math-$(MATH_VERSION)
 	@mkdir -p ex_stan/include
 	@rm -rf $(addprefix ex_stan/include/,$(SUNDIALS_INCLUDES))
-	cp -r $(addprefix build/math-$(MATH_VERSION)/lib/sundials_$(SUNDIALS_VERSION)/include/,$(SUNDIALS_INCLUDES)) ex_stan/include
+	cp -r $(addprefix _build/math-$(MATH_VERSION)/lib/sundials_$(SUNDIALS_VERSION)/include/,$(SUNDIALS_INCLUDES)) ex_stan/include
 
-ex_stan/include/tbb: | build/math-$(MATH_VERSION)
+ex_stan/include/tbb: | _build/math-$(MATH_VERSION)
 	@mkdir -p ex_stan/include
 	@rm -rf tbb
-	cp -r build/math-$(MATH_VERSION)/lib/tbb_$(TBB_VERSION)/include/tbb ex_stan/include
+	cp -r _build/math-$(MATH_VERSION)/lib/tbb_$(TBB_VERSION)/include/tbb ex_stan/include
 
 ###############################################################################
 # Make local copies of shared libraries built by Stan Math's Makefile rules
 ###############################################################################
 
-ex_stan/lib/%: build/math-$(MATH_VERSION)/lib/sundials_$(SUNDIALS_VERSION)/lib/%
+ex_stan/lib/%: _build/math-$(MATH_VERSION)/lib/sundials_$(SUNDIALS_VERSION)/lib/%
 	mkdir -p ex_stan/lib
 	cp $< $@
 
@@ -141,22 +141,22 @@ ex_stan/lib/%: build/math-$(MATH_VERSION)/lib/sundials_$(SUNDIALS_VERSION)/lib/%
 # Do not use symlinks since these will be ignored by Python wheel builders
 # WISHLIST: Understand why Python needs both .so and .so.2.
 ifeq ($(shell uname -s),Darwin)
-ex_stan/lib/libtbb.so: build/math-$(MATH_VERSION)/lib/tbb/libtbb.dylib
+ex_stan/lib/libtbb.so: _build/math-$(MATH_VERSION)/lib/tbb/libtbb.dylib
 	cp $< ex_stan/lib/$(notdir $<)
 	@rm -f $@
 	cd $(dir $@) && cp $(notdir $<) $(notdir $@)
 
-ex_stan/lib/libtbb%.so: build/math-$(MATH_VERSION)/lib/tbb/libtbb%.dylib
+ex_stan/lib/libtbb%.so: _build/math-$(MATH_VERSION)/lib/tbb/libtbb%.dylib
 	cp $< ex_stan/lib/$(notdir $<)
 	@rm -f $@
 	cd $(dir $@) && cp $(notdir $<) $(notdir $@)
 else
-ex_stan/lib/libtbb.so: build/math-$(MATH_VERSION)/lib/tbb/libtbb.so.2
+ex_stan/lib/libtbb.so: _build/math-$(MATH_VERSION)/lib/tbb/libtbb.so.2
 	cp $< ex_stan/lib/$(notdir $<)
 	@rm -f $@
 	cd $(dir $@) && cp $(notdir $<) $(notdir $@)
 
-ex_stan/lib/libtbb%.so: build/math-$(MATH_VERSION)/lib/tbb/libtbb%.so.2
+ex_stan/lib/libtbb%.so: _build/math-$(MATH_VERSION)/lib/tbb/libtbb%.so.2
 	cp $< ex_stan/lib/$(notdir $<)
 	@rm -f $@
 	cd $(dir $@) && cp $(notdir $<) $(notdir $@)
@@ -172,18 +172,18 @@ endif
 export MATH_VERSION
 
 # locations where Stan Math's Makefile expects to output the shared libraries
-SUNDIALS_LIBRARIES_BUILD_LOCATIONS := $(addprefix build/math-$(MATH_VERSION)/lib/sundials_$(SUNDIALS_VERSION)/lib/,$(notdir $(SUNDIALS_LIBRARIES)))
+SUNDIALS_LIBRARIES_BUILD_LOCATIONS := $(addprefix _build/math-$(MATH_VERSION)/lib/sundials_$(SUNDIALS_VERSION)/lib/,$(notdir $(SUNDIALS_LIBRARIES)))
 ifeq ($(shell uname -s),Darwin)
-  TBB_LIBRARIES_BUILD_LOCATIONS := build/math-$(MATH_VERSION)/lib/tbb/libtbb.dylib build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc.dylib build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc_proxy.dylib
+  TBB_LIBRARIES_BUILD_LOCATIONS := _build/math-$(MATH_VERSION)/lib/tbb/libtbb.dylib _build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc.dylib _build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc_proxy.dylib
 else
-  TBB_LIBRARIES_BUILD_LOCATIONS := build/math-$(MATH_VERSION)/lib/tbb/libtbb.so.2 build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc.so.2 build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc_proxy.so.2
+  TBB_LIBRARIES_BUILD_LOCATIONS := _build/math-$(MATH_VERSION)/lib/tbb/libtbb.so.2 _build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc.so.2 _build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc_proxy.so.2
 endif
 
-$(TBB_LIBRARIES_BUILD_LOCATIONS) $(SUNDIALS_LIBRARIES_BUILD_LOCATIONS): | build/math-$(MATH_VERSION)
+$(TBB_LIBRARIES_BUILD_LOCATIONS) $(SUNDIALS_LIBRARIES_BUILD_LOCATIONS): | _build/math-$(MATH_VERSION)
 	$(MAKE) -f Makefile.libraries $@
 
 # the following rule is required for parallel make
-build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc_proxy.dylib: build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc.dylib
+_build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc_proxy.dylib: _build/math-$(MATH_VERSION)/lib/tbb/libtbbmalloc.dylib
 
 # the following variables should match those in ex_stan/models.py
 # One include directory is absent: `model_directory_path` as this only
