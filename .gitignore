@@ -24,3 +24,6 @@ ex_stan-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+build/*
+ex_stan/*

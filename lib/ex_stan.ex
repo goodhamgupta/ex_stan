@@ -1,18 +1,23 @@
 defmodule ExStan do
+
+  @on_load :load_nif
   @moduledoc """
-  Documentation for `ExStan`.
+  Documentation for `ExTg`.
   """
 
   @doc """
-  Hello world.
-
   ## Examples
 
-      iex> ExStan.hello()
+      iex> ExTg.load_nif()
       :world
 
   """
-  def hello do
-    :world
+  def load_nif do
+    :erlang.load_nif('lib/src/native', 0)
   end
+
+  def add(x, y) do
+    raise "NIF add/2 not implemented"
+  end
+
 end
