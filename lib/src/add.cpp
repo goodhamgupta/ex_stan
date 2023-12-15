@@ -1,4 +1,6 @@
 #include <erl_nif.h>
+#include <stan/callbacks/interrupt.hpp>
+
 
 int add (int a, int b)
 {

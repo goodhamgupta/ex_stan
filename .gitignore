@@ -25,5 +25,7 @@ ex_stan-*.tar
 # Temporary files, for example, from tests.
 /tmp/
 
-build/*
-ex_stan/*
+# Stan compiled libraries, headers and binaries
+lib/src/lib/*
+lib/src/include/*
+lib/src/stanc
