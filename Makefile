@@ -109,6 +109,8 @@ lib/src/include/stan/math: | _build/math-$(MATH_VERSION)
 
 lib/src/include/boost: | _build/math-$(MATH_VERSION)
 	@mkdir -p lib/src/include
+	@echo "HERE!!!!!!!!!!!!!!!!!"
+	@echo $@
 	@rm -rf $@
 	cp -r _build/math-$(MATH_VERSION)/lib/boost_$(BOOST_VERSION)/boost $@
 
