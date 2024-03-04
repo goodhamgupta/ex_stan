@@ -60,7 +60,7 @@ ERL_NIF_TERM new_array_var_context_nif(ErlNifEnv *env, int argc, const ERL_NIF_T
     {
         return enif_make_badarg(env);
     }
-    unsiged int len;
+    unsigned int len;
     if (!enif_get_list_length(env, argv[0], &len))
     {
         return enif_make_badarg(env);
