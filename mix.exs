@@ -20,7 +20,8 @@ defmodule ExStan.MixProject do
 
   defp deps do
     [
-      {:nx, "~> 0.5"}
+      {:nx, "~> 0.7.1"},
+      {:explorer, "~> 0.8.0", optional: true}
     ]
   end
 end
