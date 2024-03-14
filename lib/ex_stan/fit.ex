@@ -18,6 +18,7 @@ defmodule ExStan.Fit do
     :num_warmup,
     :num_samples,
     :num_thin,
+    :num_flat,
     :save_warmup,
     :sample_and_sampler_param_names,
     :_draws
@@ -99,6 +100,7 @@ defmodule ExStan.Fit do
         num_warmup,
         num_samples,
         num_thin,
+        num_flat \\ nil,
         save_warmup
       ) do
     %Fit{
@@ -110,6 +112,7 @@ defmodule ExStan.Fit do
       num_warmup: num_warmup,
       num_samples: num_samples,
       num_thin: num_thin,
+      num_flat: num_flat,
       save_warmup: save_warmup
     }
     |> validate()
