@@ -24,7 +24,7 @@ defmodule ExStan.Model do
 
   defp do_build(program_code) do
     url = @base_url <> "/models"
-    response = Req.post!(url, json: %{"program_code" => program_code})
+    response = Req.post!(url, json: %{"program_code" => program_code}, receive_timeout: 60_000)
 
     case response.status do
       201 ->
@@ -74,11 +74,25 @@ defmodule ExStan.Model do
 
   defp create_model_struct(response) do
     params_list = response.body["params"]
-    require IEx
-    IEx.pry()
 
-    Enum.map(params_list, fn param ->
-      {param["constrained_names"], param["name"], param["dims"]}
-    end)
+    # [{nested_constrained_names, param_names, param_dims}] =
+    result =
+      Enum.map(params_list, fn param ->
+        {param["constrained_names"], param["name"], param["dims"]}
+      end)
+
+    constrained_names = for {first, _, _} <- result, do: first |> List.flatten()
+    param_names = for {_, second, _} <- result, do: second
+    param_dims = for {_, _, third} <- result, do: third
+
+    %__MODULE__{
+      model_name: response.body["name"],
+      program_code: response.body["program_code"],
+      data: response.body["data"],
+      param_names: param_names,
+      constrained_param_names: constrained_names,
+      dims: param_dims,
+      random_seed: response.body["random_seed"]
+    }
   end
 end
