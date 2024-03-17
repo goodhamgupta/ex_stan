@@ -65,14 +65,19 @@ defmodule ExStan.Fit do
                 num_rows =
                   length(sample_and_sampler_param_names) + length(acc.constrained_param_names)
 
-                acc = Map.put(acc, :_draws, Nx.empty({num_rows, acc.num_samples, acc.num_chains}))
+                tmp_acc =
+                  Map.put(
+                    acc,
+                    :_draws,
+                    Nx.broadcast(0, {num_rows, acc.num_samples, acc.num_chains})
+                  )
 
                 if length(acc.constrained_param_names) > 0 and
                      String.ends_with?(List.last(feature_names), "__") do
                   raise "Expected last parameter name to be one declared in program code, found `#{List.last(feature_names)}`"
                 end
 
-                Map.put(acc, :sample_and_sampler_param_names, sample_and_sampler_param_names)
+                Map.put(tmp_acc, :sample_and_sampler_param_names, sample_and_sampler_param_names)
               end
 
             draw_row = Map.values(values)
@@ -124,53 +129,28 @@ defmodule ExStan.Fit do
   end
 
   def to_frame(%Fit{
-        _draws: _draws,
+        _draws: draws,
         sample_and_sampler_param_names: sample_and_sampler_param_names,
         constrained_param_names: constrained_param_names
       }) do
     if Code.ensure_loaded?(Explorer) do
-      alias Explorer.DataFrame
-      :ok
+      # alias Explorer.DataFrame
+
+      columns = sample_and_sampler_param_names ++ constrained_param_names
+
+      if length(draws) == length(columns) do
+        # draws
+        # |> DataFrame.new(columns: columns).rename(:index, "draws").rename(:columns, "parameters")
+        :ok
+      else
+        raise "Length of draws and columns do not match"
+      end
     else
       raise "Explorer is not available. Please install it using `mix deps.get`"
     end
-
-    # This function requires pandas which is not available in Elixir.
-    # You can convert the data to CSV or any other format and then use pandas in Python to convert it to a DataFrame.
-  end
-
-  def get_item(
-        %Fit{
-          param_names: param_names,
-          dims: dims,
-          _draws: _draws,
-          num_samples: num_samples,
-          num_thin: num_thin,
-          num_warmup: num_warmup,
-          num_chains: num_chains
-        },
-        param
-      ) do
-    # This function is a placeholder. The actual implementation depends on the structure of _draws and other variables.
   end
 
   def len(%Fit{param_names: param_names}) do
     Enum.count(param_names)
-  end
-
-  def to_string(%__MODULE__{param_names: param_names, dims: dims, _draws: _draws}) do
-    # This function is a placeholder. The actual implementation depends on the structure of _draws and other variables.
-  end
-
-  defp parameter_indexes(
-         %__MODULE__{
-           sample_and_sampler_param_names: sample_and_sampler_param_names,
-           constrained_param_names: constrained_param_names,
-           dims: dims,
-           param_names: param_names
-         },
-         param
-       ) do
-    # This function is a placeholder. The actual implementation depends on the structure of _draws and other variables.
   end
 end
