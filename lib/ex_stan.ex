@@ -25,7 +25,7 @@ defmodule ExStan do
     handle_build_response(response, start)
     response = post_model_params(response, data)
     validate_model_params(response)
-    create_model_struct(response)
+    create_model_struct(program_code, data, response)
   end
 
   defp do_build(program_code) do
@@ -78,7 +78,7 @@ defmodule ExStan do
     end
   end
 
-  defp create_model_struct(response) do
+  defp create_model_struct(program_code, data, response) do
     params_list = response.body["params"]
 
     result =
@@ -92,8 +92,8 @@ defmodule ExStan do
 
     %Model{
       model_name: response.body["name"],
-      program_code: response.body["program_code"],
-      data: response.body["data"],
+      program_code: program_code,
+      data: data,
       param_names: param_names,
       constrained_param_names: constrained_names,
       dims: param_dims,
