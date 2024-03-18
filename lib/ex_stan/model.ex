@@ -1,5 +1,4 @@
 defmodule ExStan.Model do
-
   @keys [
     :model_name,
     :program_code,
@@ -11,5 +10,4 @@ defmodule ExStan.Model do
   ]
 
   defstruct @keys
-
 end

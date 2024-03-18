@@ -1,4 +1,6 @@
 defmodule ExStan do
+  require Logger
+
   alias ExStan.Model
   @base_url Application.compile_env(:ex_stan, :httpstan_url)
 
@@ -9,7 +11,7 @@ defmodule ExStan do
 
   - `program_code`: Stan program code describing a Stan model.
   - `data`: An Elixir map providing the data for the model. Variable names are the keys and the values are their associated values. Default is an empty map, suitable for Stan programs with no `data` block.
-  - `random_seed`: Random seed, a positive integer for random number generation. Used to ensure that results can be reproduced. Currently not implemented.
+  - `random_seed`: Random seed, a positive integer for random number generation. Used to ensure that results can be reproduced.
 
   ## Returns
 
@@ -19,40 +21,41 @@ defmodule ExStan do
 
   C++ reserved words and Stan reserved words may not be used for variable names; see the Stan User's Guide for a complete list.
   """
-  def build(program_code, data \\ %{}, _random_seed \\ nil) do
-    start = :os.system_time(:second)
-    response = do_build(program_code)
-    handle_build_response(response, start)
-    response = post_model_params(response, data)
-    validate_model_params(response)
-    create_model_struct(program_code, data, response)
+  def build(program_code, data \\ %{}, random_seed \\ nil) do
+    program_code
+    |> do_build()
+    |> handle_build_response()
+    |> post_model_params(data)
+    |> validate_model_params()
+    |> create_model_struct(program_code, data, random_seed)
   end
 
   defp do_build(program_code) do
     url = @base_url <> "/models"
+    Logger.info("Building model..")
     response = Req.post!(url, json: %{"program_code" => program_code}, receive_timeout: 60_000)
 
     case response.status do
       201 ->
-        IO.puts("Model created")
+        Logger.info("Model created")
         response
 
       _ ->
-        IO.puts("Model creation unsuccesful")
+        Logger.error("Model creation unsuccesful")
         IO.inspect(response)
     end
   end
 
-  defp handle_build_response(response, start) do
+  defp handle_build_response(response) do
     if response.status != 201 do
-      raise "Error: #{response.body}"
+      raise RuntimeError, message: "Error: #{response.body}"
     else
-      IO.puts("Building: #{:os.system_time(:second) - start}s, done.")
-
       if Map.has_key?(response.body, "stanc_warnings") do
-        IO.puts("Messages from stanc: #{response.body["stanc_warnings"]}")
+        Logger.info("Messages from stanc: #{response.body["stanc_warnings"]}")
       end
     end
+
+    response
   end
 
   defp post_model_params(response, data) do
@@ -74,11 +77,14 @@ defmodule ExStan do
         Enum.count(params_list)
 
     if val != true do
-      raise "Error: duplicate parameter names"
+      raise ArgumentError,
+        message: "Validation Error: Duplicate parameter names detected in the model."
     end
+
+    response
   end
 
-  defp create_model_struct(program_code, data, response) do
+  defp create_model_struct(response, program_code, data, random_seed) do
     params_list = response.body["params"]
 
     result =
@@ -97,7 +103,7 @@ defmodule ExStan do
       param_names: param_names,
       constrained_param_names: constrained_names,
       dims: param_dims,
-      random_seed: response.body["random_seed"]
+      random_seed: random_seed
     }
   end
 end
