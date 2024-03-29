@@ -96,32 +96,22 @@ defmodule ExStan.Fit do
     end)
   end
 
-  def new(
-        stan_outputs,
-        num_chains,
-        param_names,
-        constrained_param_names,
-        dims,
-        num_warmup,
-        num_samples,
-        num_thin,
-        num_flat \\ nil,
-        save_warmup
-      ) do
+  def new(opts) do
+    # This should come after the `new` function definition
+    # |> validate()
+    # |> parse_draws()
     %Fit{
-      stan_outputs: stan_outputs,
-      num_chains: num_chains,
-      param_names: param_names,
-      constrained_param_names: constrained_param_names,
-      dims: dims,
-      num_warmup: num_warmup,
-      num_samples: num_samples,
-      num_thin: num_thin,
-      num_flat: num_flat,
-      save_warmup: save_warmup
+      stan_outputs: Keyword.get(opts, :stan_outputs),
+      num_chains: Keyword.get(opts, :num_chains),
+      param_names: Keyword.get(opts, :param_names),
+      constrained_param_names: Keyword.get(opts, :constrained_param_names),
+      dims: Keyword.get(opts, :dims),
+      num_warmup: Keyword.get(opts, :num_warmup),
+      num_samples: Keyword.get(opts, :num_samples),
+      num_thin: Keyword.get(opts, :num_thin),
+      save_warmup: Keyword.get(opts, :save_warmup),
+      num_flat: Keyword.get(opts, :num_flat, nil)
     }
-    |> validate()
-    |> parse_draws()
   end
 
   def contains?(%Fit{param_names: param_names}, key) do

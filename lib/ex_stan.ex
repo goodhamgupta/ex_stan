@@ -2,7 +2,7 @@ defmodule ExStan do
   require Logger
 
   alias ExStan.Model
-  @base_url Application.compile_env(:ex_stan, :httpstan_url)
+  alias ExStan.Client
 
   @doc """
   Builds (compiles) a Stan program.
@@ -31,9 +31,8 @@ defmodule ExStan do
   end
 
   defp do_build(program_code) do
-    url = @base_url <> "/models"
     Logger.info("Building model..")
-    response = Req.post!(url, json: %{"program_code" => program_code}, receive_timeout: 60_000)
+    response = Client.post("/models", %{"program_code" => program_code})
 
     case response.status do
       201 ->
@@ -59,8 +58,7 @@ defmodule ExStan do
   end
 
   defp post_model_params(response, data) do
-    url = @base_url <> "/#{response.body["name"]}/params"
-    response = Req.post!(url, json: %{"data" => data})
+    response = Client.post("/#{response.body["name"]}/params", %{"data" => data})
 
     if response.status != 200 do
       raise "Error: #{Jason.encode!(response.body)}"
