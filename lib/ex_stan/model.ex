@@ -21,6 +21,8 @@ defmodule ExStan.Model do
   @current_and_max_iterations_regex ~r/Iteration:\s+(\d+)\s+\/\s+(\d+)/
   @delete_success_codes [200, 202, 204]
 
+  # Public API
+
   @doc """
   Draws samples from the model. For easy reference, documentation is copied from Pystan.
 
@@ -45,19 +47,179 @@ defmodule ExStan.Model do
   ```
   program_code = "parameters {real y;} model {y ~ normal(0,1);}"
   posterior = ExStan.build(program_code)
-  fit = ExStan.Model.sample(posterior, num_chains: 2, init: [{"y": 3}, {"y": 3}])
+  fit = ExStan.Model.sample(posterior, 2, init: [{"y": 3}, {"y": 3}])
   ```
   """
   def sample(%Model{} = model, num_chains \\ 4, opts \\ []) do
     hmc_nuts_diag_e_adapt(model, num_chains, opts)
   end
 
+  @doc """
+  Draws samples from the model using `stan::services::sample::hmc_nuts_diag_e_adapt`.
+
+  Parameters in `opts` will be passed to `stan::services::sample::hmc_nuts_diag_e_adapt`. Parameter names are
+  identical to those used in CmdStan. See the CmdStan documentation for
+  parameter descriptions and default values.
+
+  There is one exception: `num_chains`. `num_chains` is an
+  ExStan-specific keyword argument. It indicates the number of
+  independent processes to use when drawing samples.
+
+  ## Returns
+
+  - `%ExStan.Fit{}`: An instance of `%ExStan.Fit{}` allowing access to draws.
+  """
   def hmc_nuts_diag_e_adapt(%Model{} = model, num_chains, opts) do
     create_fit(model, num_chains, opts ++ [{:function, @hmc_nuts_diag_e_adapt_function}])
   end
 
+  @doc """
+  Draws samples from the model using `stan::services::sample::fixed_param`.
+
+  Parameters in `opts` will be passed to `stan::services::sample::fixed_param`. Parameter names are
+  identical to those used in CmdStan. See the CmdStan documentation for
+  parameter descriptions and default values.
+
+  `num_chains` is an ExStan-specific argument indicating the number of
+  independent processes to use when drawing samples.
+
+  Returns:
+  - `%ExStan.Fit{}`: An instance of `%ExStan.Fit{}` allowing access to draws.
+  """
   def fixed_param(%Model{} = model, num_chains \\ 4, opts \\ []) do
     create_fit(model, num_chains, opts ++ [{:function, @fixed_param_function}])
+  end
+
+  @doc """
+  Calculate the log probability of a set of unconstrained parameters.
+
+  Arguments:
+      model: The model containing the data.
+      unconstrained_parameters: A sequence of unconstrained parameters.
+      include_tparams: Apply jacobian adjust transform for transformed parameters.
+      include_gqs: Apply jacobian adjust transform for generated quantities.
+
+  Returns:
+      The log probability of the unconstrained parameters.
+
+  Notes:
+      The unconstrained parameters are passed to the log_prob
+      function in stan::model.
+  """
+  def constrain_pars(
+        %Model{data: data, model_name: model_name} = _model,
+        unconstrained_parameters,
+        include_tparams \\ true,
+        include_gqs \\ true
+      ) do
+    payload = %{
+      "data" => data,
+      "unconstrained_parameters" => unconstrained_parameters,
+      "include_tparams" => include_tparams,
+      "include_gqs" => include_gqs
+    }
+
+    response = Client.post("/#{model_name}/write_array", payload)
+
+    if response.status != 200 do
+      raise RuntimeError, response.body
+    else
+      response.body["params_r_constrained"]
+    end
+  end
+
+  @doc """
+  Reads constrained parameter values from their specified context and returns a
+  sequence of unconstrained parameter values.
+
+  Arguments:
+      model: The model containing the data.
+      constrained_parameters: Constrained parameter values and their specified context
+
+  Returns:
+      A sequence of unconstrained parameters.
+
+  Notes:
+      The unconstrained parameters are passed to the `transform_inits` method of the
+      `model_base` instance. See `model_base.hpp` in the Stan C++ library for details.
+  """
+  def unconstrain_pars(%Model{data: data, model_name: model_name}, constrained_parameters) do
+    payload = %{
+      "data" => data,
+      "constrained_parameters" => constrained_parameters
+    }
+
+    response = Client.post("/#{model_name}/transform_inits", payload)
+
+    if response.status != 200 do
+      raise RuntimeError, response.body
+    else
+      response.body["params_r_unconstrained"]
+    end
+  end
+
+  @doc """
+  Calculate the log probability of a set of unconstrained parameters.
+
+  Arguments:
+      model: The model containing the data.
+      unconstrained_parameters: A sequence of unconstrained parameters.
+      adjust_transform: Apply jacobian adjust transform.
+
+  Returns:
+      The log probability of the unconstrained parameters.
+
+  Notes:
+      The unconstrained parameters are passed to the log_prob
+      function in stan::model.
+  """
+  def log_prob(
+        %Model{data: data, model_name: model_name},
+        unconstrained_parameters,
+        adjust_transform \\ true
+      ) do
+    payload = %{
+      "data" => data,
+      "unconstrained_parameters" => unconstrained_parameters,
+      "adjust_transform" => adjust_transform
+    }
+
+    response = Client.post("/#{model_name}/log_prob", payload)
+
+    if response.status != 200 do
+      raise RuntimeError, response.body
+    else
+      response.body["log_prob"]
+    end
+  end
+
+  @doc """
+  Calculate the gradient of the log posterior evaluated at the unconstrained parameters.
+
+  Arguments:
+      model: The model containing the data.
+      unconstrained_parameters: A sequence of unconstrained parameters.
+
+  Returns:
+      The gradient of the log posterior evaluated at the unconstrained parameters.
+
+  Notes:
+      The unconstrained parameters are passed to the log_prob_grad
+      function in stan::model.
+  """
+  def grad_log_prob(%Model{data: data, model_name: model_name}, unconstrained_parameters) do
+    payload = %{
+      "data" => data,
+      "unconstrained_parameters" => unconstrained_parameters
+    }
+
+    response = Client.post("/#{model_name}/log_prob_grad", payload)
+
+    if response.status != 200 do
+      raise RuntimeError, response.body
+    else
+      response.body["log_prob_grad"]
+    end
   end
 
   defp validate(opts) do
@@ -206,7 +368,7 @@ defmodule ExStan.Model do
     end
   end
 
-  defp create_fit(%Model{} = model, num_chains \\ 4, opts_list \\ []) do
+  defp create_fit(%Model{} = model, num_chains, opts_list) do
     validate(opts_list)
 
     opts = Enum.into(opts_list, %{})
@@ -266,18 +428,11 @@ defmodule ExStan.Model do
           save_warmup: save_warmup
         )
 
+      # TODO: Add support for custom plugins
       fit
     rescue
       e in RuntimeError ->
         Logger.error(e)
     end
-
-    # TODO: Add support for custom plugins
-    #   Enum.reduce(Stan.Plugins.get_plugins(), fit, fn plugin, fit ->
-    #     plugin.on_post_sample(fit)
-    #   end)
-    # after
-    #   Stan.Common.HttpstanClient.close(client)
-    # end
   end
 end
