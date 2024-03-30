@@ -1,11 +1,17 @@
 # ExStan
 
-**TODO: Add description**
+**ExStan** is a Elixir interface to Stan, a package for Bayesian inference.
+
+Stan® is a state-of-the-art platform for statistical modeling and
+high-performance statistical computation. Thousands of users rely on Stan for
+statistical modeling, data analysis, and prediction in the social, biological,
+and physical sciences, engineering, and business.
+
+This project is primarily based on the [PyStan](https://github.com/stan-dev/pystan) repository.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `ex_stan` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `ex_stan` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -15,15 +21,9 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/ex_stan>.
+ExStan requires the [httpstan](https://github.com/stan-dev/httpstan/) package to facilitate communication with the Stan compiler via the httpstan server. Installation methods vary by operating system: for most systems, `httpstan` can be installed using `pip`, while MacOS users must compile it from the source code.
 
 
-## Compile NIF
+## Credits
 
-Compile the NIF using the following command:
-
-```sh
-g++ -std=c++14 -I/Users/shubham.gupta/.asdf/installs/erlang/24.0/erts-12.0/include/ -Ilib/src/include/ -bundle -bundle_loader /Users/shubham.gupta/.asdf/installs/erlang/24.0/erts-12.0/bin/beam.smp -o lib/src/native.so -DBOOST_DISABLE_ASSERTS -DBOOST_PHOENIX_NO_VARIADIC_EXPRESSION -DSTAN_THREADS -D_REENTRANT -D_GLIBCXX_USE_CXX11_ABI=0 -O3  -L./lib/src/lib -ltbb -Wl,-rpath,/Users/shubham.gupta/shubham/ex_stan/lib/src/lib lib/src/stan_services.cpp
-```
+This package is based entirely on the PyStan and RStan SDKs.
