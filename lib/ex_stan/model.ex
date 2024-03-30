@@ -1,7 +1,14 @@
 defmodule ExStan.Model do
+  @doc """
+  Stores data associated with a Stan model and proxies calls to Stan services.
+
+  Returned by `ExStan.build`. Users will not instantiate this class directly.
+  """
+
   alias ExStan.{Client, Constants, Fit}
-  require Logger
   alias __MODULE__
+
+  require Logger
 
   @keys [
     :model_name,

@@ -23,7 +23,8 @@ defmodule ExStan.MixProject do
       {:nx, "~> 0.7.1"},
       {:explorer, "~> 0.8.0", optional: true},
       {:jason, "~> 1.4"},
-      {:req, "~> 0.4.0"}
+      {:req, "~> 0.4.0"},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]
   end
 end
