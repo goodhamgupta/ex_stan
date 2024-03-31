@@ -31,15 +31,8 @@ defmodule ExStan.Fit do
 
   defp validate(obj), do: obj
 
-  defp parse_draws(
-         %Fit{
-           stan_outputs: stan_outputs,
-           num_samples: num_samples,
-           num_chains: num_chains,
-           constrained_param_names: constrained_param_names
-         } = fit
-       ) do
-    result = do_parse_draws(stan_outputs, num_samples, num_chains, constrained_param_names)
+  defp parse_draws(%Fit{} = fit) do
+    result = do_parse_draws(fit)
 
     Map.merge(fit, %{
       _draws: result.draws,
@@ -47,16 +40,14 @@ defmodule ExStan.Fit do
     })
   end
 
-  defp do_parse_draws(stan_outputs, num_samples, num_chains, constrained_param_names) do
-    Enum.with_index(stan_outputs)
+  defp do_parse_draws(fit) do
+    Enum.with_index(fit.stan_outputs)
     |> Enum.reduce(nil, fn {stan_output, chain_index}, acc ->
       parse_stan_output(
         stan_output,
         chain_index,
         acc,
-        num_samples,
-        num_chains,
-        constrained_param_names
+        fit
       )
     end)
   end
@@ -65,14 +56,12 @@ defmodule ExStan.Fit do
          stan_output,
          chain_index,
          acc,
-         num_samples,
-         num_chains,
-         constrained_param_names
+         fit
        ) do
     String.split(stan_output, "\n")
     |> Enum.reduce(
       {acc, 0},
-      &process_line(&1, &2, chain_index, num_samples, num_chains, constrained_param_names)
+      &process_line(&1, &2, chain_index, fit)
     )
     |> elem(0)
   end
@@ -81,9 +70,7 @@ defmodule ExStan.Fit do
          line,
          {acc, draw_index},
          chain_index,
-         num_samples,
-         num_chains,
-         constrained_param_names
+         fit
        ) do
     msg = decode_line(line)
 
@@ -93,9 +80,7 @@ defmodule ExStan.Fit do
         acc,
         draw_index,
         chain_index,
-        num_samples,
-        num_chains,
-        constrained_param_names
+        fit
       )
     else
       {acc, draw_index}
@@ -110,32 +95,30 @@ defmodule ExStan.Fit do
          acc,
          draw_index,
          chain_index,
-         num_samples,
-         num_chains,
-         constrained_param_names
+         fit
        ) do
     values = Map.get(msg, "values")
 
     if not is_map(values) do
       {acc, draw_index}
     else
-      acc = initialize_acc_if_nil(acc, values, num_samples, num_chains, constrained_param_names)
+      acc = initialize_acc_if_nil(acc, values, fit)
       update_draws(acc, values, draw_index, chain_index)
     end
   end
 
-  defp initialize_acc_if_nil(nil, values, num_samples, num_chains, constrained_param_names) do
+  defp initialize_acc_if_nil(nil, values, fit) do
     feature_names = Map.keys(values)
     sample_and_sampler_param_names = Enum.filter(feature_names, &String.ends_with?(&1, "__"))
-    num_rows = length(sample_and_sampler_param_names) + length(constrained_param_names)
+    num_rows = length(sample_and_sampler_param_names) + length(fit.constrained_param_names)
 
     %{
-      draws: Nx.broadcast(0, {num_rows, num_samples, num_chains}),
+      draws: Nx.broadcast(0, {num_rows, fit.num_samples, fit.num_chains}),
       sample_and_sampler_param_names: sample_and_sampler_param_names
     }
   end
 
-  defp initialize_acc_if_nil(acc, _values, _num_samples, _num_chains, _constrained_param_names),
+  defp initialize_acc_if_nil(acc, _values, _fit),
     do: acc
 
   defp update_draws(acc, values, draw_index, chain_index) do
@@ -153,6 +136,7 @@ defmodule ExStan.Fit do
     |> Nx.tensor()
   end
 
+  # Public API
   def new(opts) do
     %Fit{
       stan_outputs: Keyword.get(opts, :stan_outputs),
