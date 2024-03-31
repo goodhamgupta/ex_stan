@@ -394,6 +394,7 @@ defmodule ExStan.Model do
     num_warmup = Map.get(opts, "num_warmup", Constants.default_sample_num_warmup())
     num_samples = Map.get(opts, "num_samples", Constants.default_sample_num_samples())
     num_thin = Map.get(opts, "num_thin", Constants.default_sample_num_thin())
+    num_flat = Map.get(opts, "num_flat", Constants.default_sample_num_flat())
     save_warmup = Map.get(opts, "save_warmup", Constants.default_sample_save_warmup())
 
     payloads =
@@ -427,11 +428,12 @@ defmodule ExStan.Model do
           stan_outputs: stan_outputs,
           num_chains: num_chains,
           param_names: model.param_names,
-          constrained_param_names: model.constrained_param_names,
+          constrained_param_names: model.constrained_param_names |> List.flatten(),
           dims: model.dims,
           num_warmup: num_warmup,
           num_samples: num_samples,
           num_thin: num_thin,
+          num_flat: num_flat,
           save_warmup: save_warmup
         )
 

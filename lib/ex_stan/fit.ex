@@ -29,66 +29,83 @@ defmodule ExStan.Fit do
           "num_thin object cannot be interpreted as an integer. Given: num_thin=#{num_thin}"
   end
 
-  defp validate(%Fit{num_flat: num_flat, constrained_param_names: constrained_param_names})
-       when num_flat != length(constrained_param_names) do
-    raise ArgumentError,
-          "num_flat and constrained_param_names must have the same length. Given: num_flat=#{num_flat}, constrained_param_names=#{constrained_param_names}"
-  end
-
   defp validate(obj), do: obj
 
-  defp parse_draws(%Fit{} = fit) do
-    fit
-    |> Map.put(:_draws, nil)
+  defp parse_draws(%Fit{
+         stan_outputs: stan_outputs,
+         num_samples: num_samples,
+         num_chains: num_chains,
+         constrained_param_names: constrained_param_names
+       }) do
+    draws = %{}
+
+    stan_outputs
     |> Enum.with_index()
-    |> Enum.reduce(fit, fn {stan_output, chain_index}, acc ->
+    |> Enum.reduce(stan_outputs, fn {stan_output, chain_index}, acc ->
       draw_index = 0
 
       stan_output
       |> String.split("\n")
       |> Enum.reduce(acc, fn line, acc ->
-        msg = Jason.decode!(line)
+        msg =
+          try do
+            Jason.decode!(line)
+          rescue
+            error ->
+              IO.puts("Error: #{inspect(error)}")
+              IO.puts("Line: #{line}")
+              %{}
+          end
 
         if Map.get(msg, "topic") == "sample" do
           values = Map.get(msg, "values")
 
-          if not is_map(values) do
-            acc
-          else
-            acc =
-              if is_nil(acc._draws) do
-                feature_names = Map.keys(values)
+          acc =
+            if not is_map(values) do
+              acc
+            else
+              acc =
+                if draws == %{} do
+                  feature_names = Map.keys(values)
 
-                sample_and_sampler_param_names =
-                  Enum.filter(feature_names, fn name -> String.ends_with?(name, "__") end)
+                  sample_and_sampler_param_names =
+                    Enum.filter(feature_names, fn name -> String.ends_with?(name, "__") end)
 
-                num_rows =
-                  length(sample_and_sampler_param_names) + length(acc.constrained_param_names)
+                  num_rows =
+                    length(sample_and_sampler_param_names) + length(constrained_param_names)
 
-                tmp_acc =
-                  Map.put(
-                    acc,
-                    :_draws,
-                    Nx.broadcast(0, {num_rows, acc.num_samples, acc.num_chains})
+                  Map.merge(
+                    draws,
+                    %{
+                      _draws: Nx.broadcast(0, {num_rows, num_samples, num_chains}),
+                      sample_and_sampler_param_names: sample_and_sampler_param_names
+                    }
                   )
 
-                if length(acc.constrained_param_names) > 0 and
-                     String.ends_with?(List.last(feature_names), "__") do
-                  raise "Expected last parameter name to be one declared in program code, found `#{List.last(feature_names)}`"
+                  # if length(constrained_param_names) > 0 and
+                  #      String.ends_with?(List.last(feature_names), "__") do
+                  #   raise "Expected last parameter name to be one declared in program code, found `#{List.last(feature_names)}`"
+                  # end
                 end
 
-                Map.put(tmp_acc, :sample_and_sampler_param_names, sample_and_sampler_param_names)
-              end
+              draw_row = values |> Map.values() |> Nx.tensor()
+              {shape} = Nx.shape(draw_row)
 
-            draw_row = Map.values(values)
+              indices =
+                for i <- 0..(shape - 1) do
+                  [i, draw_index, chain_index]
+                end
+                |> Nx.tensor()
 
-            acc =
-              Map.update!(acc, :_draws, fn draws ->
-                Nx.put_slice(draws, {:*, draw_index, chain_index}, draw_row)
-              end)
+              tmp = Nx.indexed_put(acc._draws, indices, draw_row)
 
-            Map.put(acc, :draw_index, draw_index + 1)
-          end
+              Map.merge(
+                acc,
+                %{_draws: tmp}
+              )
+            end
+
+          acc
         else
           acc
         end
