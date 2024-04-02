@@ -13,6 +13,7 @@ defmodule ExStan.Fit do
     :stan_outputs,
     :num_chains,
     :param_names,
+    :feature_names,
     :constrained_param_names,
     :dims,
     :num_warmup,
@@ -36,6 +37,7 @@ defmodule ExStan.Fit do
 
     Map.merge(fit, %{
       _draws: result.draws,
+      feature_names: result.feature_names,
       sample_and_sampler_param_names: result.sample_and_sampler_param_names
     })
   end
@@ -114,6 +116,7 @@ defmodule ExStan.Fit do
 
     %{
       draws: Nx.broadcast(0, {num_rows, fit.num_samples, fit.num_chains}),
+      feature_names: feature_names,
       sample_and_sampler_param_names: sample_and_sampler_param_names
     }
   end
@@ -137,6 +140,7 @@ defmodule ExStan.Fit do
   end
 
   # Public API
+
   def new(opts) do
     %Fit{
       stan_outputs: Keyword.get(opts, :stan_outputs),
@@ -158,20 +162,42 @@ defmodule ExStan.Fit do
     Enum.member?(param_names, key)
   end
 
+  @doc """
+  Converts the draws from a `Fit` struct into a data frame.
+
+  This function will attempt to load the `Explorer` module to create a data frame.
+  If `Explorer` is not available, it will raise an error instructing the user to install it.
+
+  ## Parameters
+
+    - `%Fit{}`: A `Fit` struct containing the draws and feature names.
+
+  ## Returns
+
+  A `DataFrame` object with the draws as rows and feature names as columns.
+
+  ## Errors
+
+  - Raises an error if the length of draws and columns do not match.
+  - Raises an error if the `Explorer` module is not available.
+
+  """
   def to_frame(%Fit{
         _draws: draws,
-        sample_and_sampler_param_names: sample_and_sampler_param_names,
-        constrained_param_names: constrained_param_names
+        feature_names: columns
       }) do
     if Code.ensure_loaded?(Explorer) do
-      # alias Explorer.DataFrame
+      alias Explorer.DataFrame
 
-      columns = sample_and_sampler_param_names ++ constrained_param_names
+      {first_dim, _second_dim, _third_dim} = Nx.shape(draws)
 
-      if length(draws) == length(columns) do
-        # draws
-        # |> DataFrame.new(columns: columns).rename(:index, "draws").rename(:columns, "parameters")
-        :ok
+      if length(columns) == first_dim do
+        [
+          columns,
+          draws |> Nx.reshape({first_dim, :auto}) |> Nx.transpose() |> Nx.to_list()
+        ]
+        |> Enum.zip()
+        |> DataFrame.new()
       else
         raise "Length of draws and columns do not match"
       end

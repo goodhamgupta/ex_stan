@@ -15,7 +15,7 @@ defmodule ExStan.MixProject do
       # Hex
       package: package(),
       description:
-        "ExStan, a Elixir Interface to Stan, a platform for statistical modelling and high-performance computation.",
+        "ExStan, a Elixir Interface to Stan, which is a platform for statistical modelling and high-performance computation.",
 
       # Docs
       name: "ExStan",
