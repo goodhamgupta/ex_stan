@@ -158,10 +158,6 @@ defmodule ExStan.Fit do
     |> parse_draws()
   end
 
-  def contains?(%Fit{param_names: param_names}, key) do
-    Enum.member?(param_names, key)
-  end
-
   @doc """
   Converts the draws from a `Fit` struct into a data frame.
 
@@ -204,9 +200,5 @@ defmodule ExStan.Fit do
     else
       raise "Explorer is not available. Please install it using `mix deps.get`"
     end
-  end
-
-  def len(%Fit{param_names: param_names}) do
-    Enum.count(param_names)
   end
 end
