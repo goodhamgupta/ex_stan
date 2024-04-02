@@ -27,6 +27,7 @@ defmodule ExStan.Model do
 
   @current_and_max_iterations_regex ~r/Iteration:\s+(\d+)\s+\/\s+(\d+)/
   @delete_success_codes [200, 202, 204]
+  @default_num_chains 4
 
   # Public API
 
@@ -38,9 +39,8 @@ defmodule ExStan.Model do
   Parameter names are identical to those used in CmdStan. See the CmdStan documentation for
   parameter descriptions and default values.
 
-  There is one exception: `num_chains`. `num_chains` is an
-  ExStan-specific keyword argument. It indicates the number of
-  independent processes to use when drawing samples.
+  The function also accepts all options supported by CmdStand. Specifically, `num_chains` indicates the number of independent processes
+  to use when drawing samples.
 
   ## Returns
   - Fit: instance of Fit allowing access to draws.
@@ -54,11 +54,18 @@ defmodule ExStan.Model do
   ```
   program_code = "parameters {real y;} model {y ~ normal(0,1);}"
   posterior = ExStan.build(program_code)
-  fit = ExStan.Model.sample(posterior, 2, init: [{"y": 3}, {"y": 3}])
+  fit = ExStan.Model.sample(posterior, num_chains: 2, init: [{"y": 3}, {"y": 3}])
   ```
   """
-  def sample(%Model{} = model, num_chains \\ 4, opts \\ []) do
-    hmc_nuts_diag_e_adapt(model, num_chains, opts)
+  def sample(%Model{} = model, opts \\ []) do
+    opts =
+      if !Keyword.get(opts, :num_chains) do
+        Keyword.put(opts, :num_chains, @default_num_chains)
+      else
+        opts
+      end
+
+    hmc_nuts_diag_e_adapt(model, opts)
   end
 
   @doc """
@@ -76,8 +83,8 @@ defmodule ExStan.Model do
 
   - `%ExStan.Fit{}`: An instance of `%ExStan.Fit{}` allowing access to draws.
   """
-  def hmc_nuts_diag_e_adapt(%Model{} = model, num_chains, opts) do
-    create_fit(model, num_chains, opts ++ [{:function, @hmc_nuts_diag_e_adapt_function}])
+  def hmc_nuts_diag_e_adapt(%Model{} = model, opts) do
+    create_fit(model, opts ++ [{:function, @hmc_nuts_diag_e_adapt_function}])
   end
 
   @doc """
@@ -93,8 +100,8 @@ defmodule ExStan.Model do
   Returns:
   - `%ExStan.Fit{}`: An instance of `%ExStan.Fit{}` allowing access to draws.
   """
-  def fixed_param(%Model{} = model, num_chains \\ 4, opts \\ []) do
-    create_fit(model, num_chains, opts ++ [{:function, @fixed_param_function}])
+  def fixed_param(%Model{} = model, opts \\ []) do
+    create_fit(model, opts ++ [{:function, @fixed_param_function}])
   end
 
   @doc """
@@ -375,10 +382,13 @@ defmodule ExStan.Model do
     end
   end
 
-  defp create_fit(%Model{} = model, num_chains, opts_list) do
+  defp create_fit(%Model{} = model, opts_list) do
     validate(opts_list)
 
-    opts = Enum.into(opts_list, %{})
+    num_chains = opts_list[:num_chains]
+
+    # Remove `num_chains` from opts and store it
+    opts = opts_list |> Keyword.delete(:num_chains) |> Enum.into(%{})
 
     # Copy opts and verify everything is JSON-encodable
     opts = Jason.decode!(Jason.encode!(opts))
