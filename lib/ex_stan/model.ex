@@ -388,6 +388,7 @@ defmodule ExStan.Model do
     num_chains = opts_list[:num_chains]
 
     # Remove `num_chains` from opts and store it
+    # Need to convert keyword list to map to make it JSON-encodable
     opts = opts_list |> Keyword.delete(:num_chains) |> Enum.into(%{})
 
     # Copy opts and verify everything is JSON-encodable
@@ -401,11 +402,11 @@ defmodule ExStan.Model do
       raise ArgumentError, "Initial values must be provided for each chain."
     end
 
-    num_warmup = Map.get(opts, "num_warmup", Constants.default_sample_num_warmup())
-    num_samples = Map.get(opts, "num_samples", Constants.default_sample_num_samples())
-    num_thin = Map.get(opts, "num_thin", Constants.default_sample_num_thin())
-    num_flat = Map.get(opts, "num_flat", Constants.default_sample_num_flat())
-    save_warmup = Map.get(opts, "save_warmup", Constants.default_sample_save_warmup())
+    num_warmup = opts["num_warmup"] || Constants.default_sample_num_warmup()
+    num_samples = opts["num_samples"] || Constants.default_sample_num_samples()
+    num_thin = opts["num_thin"] || Constants.default_sample_num_thin()
+    num_flat = opts["num_flat"] || Constants.default_sample_num_flat()
+    save_warmup = opts["save_warmup"] || Constants.default_sample_save_warmup()
 
     payloads =
       Enum.map(1..num_chains, fn chain ->
