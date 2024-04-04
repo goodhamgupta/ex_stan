@@ -266,7 +266,7 @@ defmodule ExStan.Model do
 
   defp do_check_chain_status(operation) do
     if operation["done"] do
-      nil
+      operation
     else
       resp = Client.get("/#{operation["name"]}")
 

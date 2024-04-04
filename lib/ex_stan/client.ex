@@ -4,14 +4,15 @@ defmodule ExStan.Client do
   """
   require Logger
 
-  @base_url Application.compile_env(:ex_stan, :httpstan_url)
+  @base_url Application.compile_env(:ex_stan, :httpstan_url, "http://localhost:8080/v1")
+
   @receive_timeout 60_000
 
   @doc """
   Sends a GET request to the specified path.
   """
-  def get(path) do
-    url = @base_url <> path
+  def get(path \\ "") do
+    url = "#{@base_url}#{path}"
     Logger.debug("GET #{url}")
     Req.get!(url, receive_timeout: @receive_timeout)
   end
@@ -19,8 +20,8 @@ defmodule ExStan.Client do
   @doc """
   Sends a POST request to the specified path with the given body.
   """
-  def post(path, body) do
-    url = @base_url <> path
+  def post(path \\ "", body) do
+    url = "#{@base_url}#{path}"
     Logger.debug("POST #{url}")
     Req.post!(url, json: body, receive_timeout: @receive_timeout)
   end
@@ -28,8 +29,8 @@ defmodule ExStan.Client do
   @doc """
   Sends a DELETE request to the specified path.
   """
-  def delete(path) do
-    url = @base_url <> path
+  def delete(path \\ "") do
+    url = "#{@base_url}#{path}"
     Logger.debug("DELETE #{url}")
     Req.delete!(url, receive_timeout: @receive_timeout)
   end

@@ -190,7 +190,7 @@ defmodule ExStan.Fit do
       if length(columns) == first_dim do
         [
           columns,
-          draws |> Nx.reshape({first_dim, :auto}) |> Nx.transpose() |> Nx.to_list()
+          draws |> Nx.reshape({first_dim, :auto}) |> Nx.to_list()
         ]
         |> Enum.zip()
         |> DataFrame.new()
