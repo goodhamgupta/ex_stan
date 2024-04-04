@@ -90,17 +90,13 @@ defmodule ExStan do
         {param["constrained_names"], param["name"], param["dims"]}
       end)
 
-    constrained_names = for {first, _, _} <- result, do: first |> List.flatten()
-    param_names = for {_, second, _} <- result, do: second
-    param_dims = for {_, _, third} <- result, do: third
-
     %Model{
       model_name: response.body["name"],
       program_code: program_code,
       data: data,
-      param_names: param_names,
-      constrained_param_names: constrained_names,
-      dims: param_dims,
+      param_names: Enum.map(result, fn {_, name, _} -> name end),
+      constrained_param_names: Enum.map(result, fn {constrained, _, _} -> List.flatten(constrained) end),
+      dims: Enum.map(result, fn {_, _, dims} -> dims end),
       random_seed: random_seed
     }
   end

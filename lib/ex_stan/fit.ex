@@ -201,4 +201,87 @@ defmodule ExStan.Fit do
       raise "Explorer is not available. Please install it using `mix deps.get`"
     end
   end
+
+  @doc """
+  Computes the potential scale reduction factor (R-hat) for each parameter.
+
+  R-hat is a convergence diagnostic that measures the similarity between multiple Markov chains. An R-hat value close to 1 indicates that the chains have converged to a common distribution.
+
+  ## Parameters
+
+    - `%Fit{}`: A `Fit` struct containing the draws, parameter names, and the number of chains.
+
+  ## Returns
+
+  A list of R-hat values for each parameter.
+
+  ## Errors
+
+  - Raises an error if the draws tensor does not have the correct dimensions.
+  """
+  def compute_rhat(%Fit{_draws: draws, param_names: param_names, num_chains: num_chains} = fit) do
+    # Calculate the within-chain variance
+    w =
+      Enum.map(0..(length(param_names) - 1), fn param_index ->
+        Enum.map(0..(num_chains - 1), fn chain_index ->
+          chain_draws =
+            Nx.slice(draws, [param_index, 0, chain_index], [1, 1, 1]) |> Nx.to_flat_list()
+
+          mean_draw = Enum.reduce(chain_draws, 0, &(&1 + &2)) |> Kernel./(Enum.count(chain_draws))
+
+          variance_draw =
+            Enum.reduce(chain_draws, 0, fn draw, acc ->
+              acc + (draw - mean_draw) * (draw - mean_draw)
+            end)
+
+          variance_draw
+        end)
+        |> Enum.reduce(0, &(&1 + &2))
+        |> Kernel./(num_chains)
+      end)
+
+    # Calculate the between-chain variance
+    chain_means =
+      Enum.map(0..(length(param_names) - 1), fn param_index ->
+        Enum.map(0..(num_chains - 1), fn chain_index ->
+          chain_draws =
+            Nx.slice(draws, [param_index, 0, chain_index], [1, 1, 1]) |> Nx.to_flat_list()
+
+          Enum.reduce(chain_draws, 0, &(&1 + &2)) |> Kernel./(Enum.count(chain_draws))
+        end)
+      end)
+
+    grand_means =
+      Enum.map(chain_means, fn param_chain_means ->
+        Enum.reduce(param_chain_means, 0, &(&1 + &2)) |> Kernel./(num_chains)
+      end)
+
+    b =
+      Enum.map(0..(length(param_names) - 1), fn param_index ->
+        Enum.reduce(0..(num_chains - 1), 0, fn chain_index, acc ->
+          diff =
+            Enum.at(chain_means, param_index)
+            |> Enum.at(chain_index)
+            |> Kernel.-(Enum.at(grand_means, param_index))
+
+          acc + diff * diff
+        end)
+        |> Kernel./(num_chains - 1)
+      end)
+
+    # Estimate the variance of the target distribution
+    var_plus =
+      Enum.zip_with(w, b, fn w_val, b_val ->
+        ((num_chains - 1) * w_val + b_val) / num_chains
+      end)
+
+    # Calculate the potential scale reduction factor
+    rhat =
+      Enum.map(var_plus, fn var_plus_val ->
+        w_val = Enum.at(w, var_plus_val)
+        :math.sqrt(var_plus_val / w_val)
+      end)
+
+    rhat
+  end
 end
