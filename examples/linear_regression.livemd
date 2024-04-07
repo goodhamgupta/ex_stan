@@ -20,12 +20,6 @@ require Explorer.DataFrame, as: DF
 alias VegaLite, as: Vl
 ```
 
-<!-- livebook:{"output":true} -->
-
-```
-VegaLite
-```
-
 ### Dataset
 
 <!-- livebook:{"break_markdown":true} -->
@@ -47,69 +41,60 @@ y_n = normal(\alpha + \beta X_n, \sigma)
 $$
 
 ```elixir
-alpha = 4.0
-beta = 0.5
-sigma = 1.0
+defmodule StanModelData do
+  def generate_data(n) do
+    seed = 5000
+    key = Nx.Random.key(seed)
 
-key = Nx.Random.key(42)
-{normal, new_key} = Nx.Random.normal(key, shape: {50})
-x = Nx.multiply(10, normal)
-tmp = Nx.multiply(x, beta) |> Nx.add(alpha)
-{y, _key} = Nx.Random.normal(new_key, tmp, sigma)
+    # Sample alpha and beta from a normal distribution
+    {alpha, key} = Nx.Random.normal(key, 0, 1)
+    {beta, key} = Nx.Random.normal(key, 0, 1)
+
+    # Assume sigma is sampled from a uniform distribution between 0 and 2
+    {sigma, key} = Nx.Random.uniform(key, 0, 2)
+
+    # Generate vector x from a normal distribution
+    {x, key} = Nx.Random.normal(key, 0, 1, shape: {n})
+
+    # Calculate y based on the model y ~ normal(alpha + beta * x, sigma)
+    first = Nx.add(alpha, Nx.multiply(beta, x))
+    {second, _key} = Nx.Random.normal(key, 0, sigma, shape: {n})
+    y = Nx.add(first, second)
+    # Return the generated data and parameters
+    {x, y, alpha, beta, sigma}
+  end
+end
+
+# Generate data for N = 100
+n = 100
+{x, y, alpha, beta, sigma} = StanModelData.generate_data(n)
+
+IO.puts("alpha: #{Nx.to_number(alpha)}")
+IO.puts("beta: #{Nx.to_number(beta)}")
+IO.puts("sigma: #{Nx.to_number(sigma)}")
+IO.puts("Number of x samples: #{Nx.size(x)}")
+IO.puts("Number of y samples: #{Nx.size(y)}")
 ```
 
-<!-- livebook:{"output":true} -->
-
-```
-{#Nx.Tensor<
-   f32[50]
-   [-1.9496791362762451, 4.030874252319336, 5.440324306488037, 7.201962471008301, 6.3958964347839355, -1.273101568222046, 12.157700538635254, -1.2626073360443115, -6.4229044914245605, -5.20395040512085, 5.643933296203613, -0.20380373299121857, 0.02231268584728241, 4.1318488121032715, -2.5120484828948975, 11.381641387939453, 5.7529730796813965, 2.328111410140991, 5.810957908630371, 6.050896167755127, -10.192611694335938, 7.333907127380371, 2.2157325744628906, 9.165888786315918, 5.340627193450928, 11.912803649902344, 4.645580768585205, 3.142838716506958, 6.54929780960083, 2.37339448928833, -3.8022263050079346, -6.107990741729736, 9.028987884521484, 0.019869372248649597, 1.9872043132781982, 0.15916042029857635, -2.8273251056671143, 2.8951823711395264, -3.014874219894409, 4.166910171508789, 3.448068857192993, -0.11651201546192169, 9.255386352539062, 8.399505615234375, 2.0049664974212646, 5.249179363250732, 3.4940831661224365, 9.396709442138672, 8.442581176757812, ...]
- >,
- #Nx.Tensor<
-   u32[2]
-   [3164236999, 3984487275]
- >}
+```elixir
+Vl.new(width: 400, height: 300, title: "Sample Dataset")
+|> Vl.data_from_values(x: Nx.to_list(x), y: Nx.to_list(y))
+|> Vl.encode_field(:x, "x", type: :quantitative)
+|> Vl.encode_field(:y, "y", type: :quantitative)
+|> Vl.layers([
+  Vl.new()
+  |> Vl.mark(:point)
+  |> Vl.encode_field(:y, "y", type: :quantitative)
+])
 ```
 
 ### Initialize Model Parameters
 
 ```elixir
 data = %{
-  N: 50,
+  N: x |> Nx.size(),
   x: x |> Nx.to_list(),
   y: y |> Nx.to_list()
-}
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-%{
-  y: [-1.9496791362762451, 4.030874252319336, 5.440324306488037, 7.201962471008301,
-   6.3958964347839355, -1.273101568222046, 12.157700538635254, -1.2626073360443115,
-   -6.4229044914245605, -5.20395040512085, 5.643933296203613, -0.20380373299121857,
-   0.02231268584728241, 4.1318488121032715, -2.5120484828948975, 11.381641387939453,
-   5.7529730796813965, 2.328111410140991, 5.810957908630371, 6.050896167755127, -10.192611694335938,
-   7.333907127380371, 2.2157325744628906, 9.165888786315918, 5.340627193450928, 11.912803649902344,
-   4.645580768585205, 3.142838716506958, 6.54929780960083, 2.37339448928833, -3.8022263050079346,
-   -6.107990741729736, 9.028987884521484, 0.019869372248649597, 1.9872043132781982,
-   0.15916042029857635, -2.8273251056671143, 2.8951823711395264, -3.014874219894409,
-   4.166910171508789, 3.448068857192993, -0.11651201546192169, 9.255386352539062, 8.399505615234375,
-   2.0049664974212646, 5.249179363250732, 3.4940831661224365, 9.396709442138672, 8.442581176757812,
-   ...],
-  x: [-11.500417709350586, 0.4606887996196747, 3.2795891761779785, 6.802865028381348,
-   5.190732955932617, -10.147262573242188, 16.71434211730957, -10.126274108886719,
-   -20.446868896484375, -18.008960723876953, 3.6868066787719727, -8.0086669921875,
-   -7.556434154510498, 0.6626378297805786, -12.62515640258789, 15.162223815917969,
-   3.904886484146118, -2.9448368549346924, 4.020855903625488, 4.500731945037842,
-   -27.986282348632812, 7.066754341125488, -3.1695942878723145, 10.730718612670898,
-   3.0801944732666016, 16.22454833984375, 1.6901016235351562, -1.3153820037841797,
-   5.497535705566406, -2.8542704582214355, -15.205512046813965, -19.817041397094727,
-   10.456916809082031, -7.561320781707764, -3.62665057182312, -7.28273868560791,
-   -13.255709648132324, -1.8106944561004639, -13.630807876586914, 0.7327606678009033,
-   -0.704921543598175, -7.834083557128906, 10.909714698791504, 9.197951316833496,
-   -3.5911264419555664, 2.897298812866211, -0.6128933429718018, 11.19235897064209, ...],
-  N: 50
 }
 ```
 
@@ -131,217 +116,16 @@ model {
 """
 ```
 
-<!-- livebook:{"output":true} -->
-
-```
-"data {\n  int<lower=0> N;\n  vector[N] x;\n  vector[N] y;\n}\nparameters {\n  real alpha;\n  real beta;\n  real<lower=0> sigma;\n}\nmodel {\n  y ~ normal(alpha + beta * x, sigma);\n}\n"
-```
-
 ### Build Model
 
 ```elixir
 model = ExStan.build(model_code, data)
 ```
 
-<!-- livebook:{"output":true} -->
-
-```
-
-14:03:22.984 [info] Building model..
-
-14:03:23.005 [debug] POST http://localhost:8080/v1/models
-
-14:03:23.323 [info] Model created
-
-14:03:23.323 [info] Messages from stanc: Warning: The parameter sigma has no priors. This means either no prior is
-    provided, or the prior(s) depend on data variables. In the later case,
-    this may be a false positive.
-Warning: The parameter beta has no priors. This means either no prior is
-    provided, or the prior(s) depend on data variables. In the later case,
-    this may be a false positive.
-Warning: The parameter alpha has no priors. This means either no prior is
-    provided, or the prior(s) depend on data variables. In the later case,
-    this may be a false positive.
-
-14:03:23.323 [debug] POST http://localhost:8080/v1/models/ctow4qla/params
-
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-%ExStan.Model{
-  model_name: "models/ctow4qla",
-  program_code: "data {\n  int<lower=0> N;\n  vector[N] x;\n  vector[N] y;\n}\nparameters {\n  real alpha;\n  real beta;\n  real<lower=0> sigma;\n}\nmodel {\n  y ~ normal(alpha + beta * x, sigma);\n}\n",
-  data: %{
-    y: [-1.9496791362762451, 4.030874252319336, 5.440324306488037, 7.201962471008301,
-     6.3958964347839355, -1.273101568222046, 12.157700538635254, -1.2626073360443115,
-     -6.4229044914245605, -5.20395040512085, 5.643933296203613, -0.20380373299121857,
-     0.02231268584728241, 4.1318488121032715, -2.5120484828948975, 11.381641387939453,
-     5.7529730796813965, 2.328111410140991, 5.810957908630371, 6.050896167755127,
-     -10.192611694335938, 7.333907127380371, 2.2157325744628906, 9.165888786315918,
-     5.340627193450928, 11.912803649902344, 4.645580768585205, 3.142838716506958, 6.54929780960083,
-     2.37339448928833, -3.8022263050079346, -6.107990741729736, 9.028987884521484,
-     0.019869372248649597, 1.9872043132781982, 0.15916042029857635, -2.8273251056671143,
-     2.8951823711395264, -3.014874219894409, 4.166910171508789, 3.448068857192993,
-     -0.11651201546192169, 9.255386352539062, 8.399505615234375, 2.0049664974212646,
-     5.249179363250732, ...],
-    x: [-11.500417709350586, 0.4606887996196747, 3.2795891761779785, 6.802865028381348,
-     5.190732955932617, -10.147262573242188, 16.71434211730957, -10.126274108886719,
-     -20.446868896484375, -18.008960723876953, 3.6868066787719727, -8.0086669921875,
-     -7.556434154510498, 0.6626378297805786, -12.62515640258789, 15.162223815917969,
-     3.904886484146118, -2.9448368549346924, 4.020855903625488, 4.500731945037842,
-     -27.986282348632812, 7.066754341125488, -3.1695942878723145, 10.730718612670898,
-     3.0801944732666016, 16.22454833984375, 1.6901016235351562, -1.3153820037841797,
-     5.497535705566406, -2.8542704582214355, -15.205512046813965, -19.817041397094727,
-     10.456916809082031, -7.561320781707764, -3.62665057182312, -7.28273868560791,
-     -13.255709648132324, -1.8106944561004639, -13.630807876586914, 0.7327606678009033,
-     -0.704921543598175, -7.834083557128906, 10.909714698791504, 9.197951316833496,
-     -3.5911264419555664, ...],
-    N: 50
-  },
-  param_names: ["alpha", "beta", "sigma"],
-  constrained_param_names: [["alpha"], ["beta"], ["sigma"]],
-  dims: [[], [], []],
-  random_seed: nil
-}
-```
-
 ### Sample from Model
 
 ```elixir
-fit = Model.sample(model, num_chains: 4, num_samples: 1000)
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-
-14:03:24.668 [info] `chain` id is set automatically.
-
-14:03:24.671 [debug] POST http://localhost:8080/v1/models/ctow4qla/fits
-
-14:03:24.675 [debug] POST http://localhost:8080/v1/models/ctow4qla/fits
-
-14:03:24.696 [debug] POST http://localhost:8080/v1/models/ctow4qla/fits
-
-14:03:24.728 [debug] POST http://localhost:8080/v1/models/ctow4qla/fits
-
-14:03:24.793 [debug] GET http://localhost:8080/v1/operations/ub7egeia
-
-14:03:24.859 [debug] GET http://localhost:8080/v1/operations/cns375us
-
-14:03:24.929 [debug] GET http://localhost:8080/v1/operations/4aot6bdj
-
-14:03:24.976 [debug] GET http://localhost:8080/v1/operations/b3f6cn6l
-
-14:03:26.136 [debug] GET http://localhost:8080/v1/operations/ub7egeia
-
-14:03:27.367 [info] Sampling: 25%
-
-14:03:27.367 [debug] GET http://localhost:8080/v1/operations/cns375us
-
-14:03:27.395 [info] Sampling: 40%
-
-14:03:27.395 [debug] GET http://localhost:8080/v1/operations/4aot6bdj
-
-14:03:27.395 [info] Sampling: 35%
-
-14:03:27.395 [debug] GET http://localhost:8080/v1/operations/b3f6cn6l
-
-14:03:27.396 [info] Sampling: 100%
-
-14:03:27.396 [debug] GET http://localhost:8080/v1/operations/ub7egeia
-
-14:03:27.396 [info] Sampling: 100%
-
-14:03:27.396 [info] Sampling: 100%, done.
-
-14:03:27.396 [debug] GET http://localhost:8080/v1/models/ctow4qla/fits/ub7egeia
-
-14:03:27.404 [debug] DELETE http://localhost:8080/v1/models/ctow4qla/fits/ub7egeia
-
-14:03:27.405 [debug] GET http://localhost:8080/v1/models/ctow4qla/fits/cns375us
-
-14:03:27.417 [debug] DELETE http://localhost:8080/v1/models/ctow4qla/fits/cns375us
-
-14:03:27.420 [debug] GET http://localhost:8080/v1/models/ctow4qla/fits/4aot6bdj
-
-14:03:27.427 [debug] DELETE http://localhost:8080/v1/models/ctow4qla/fits/4aot6bdj
-
-14:03:27.428 [debug] GET http://localhost:8080/v1/models/ctow4qla/fits/b3f6cn6l
-
-14:03:27.436 [debug] DELETE http://localhost:8080/v1/models/ctow4qla/fits/b3f6cn6l
-
-14:03:27.448 [info] Messages received during sampling:
-
-14:03:27.449 [info]   Gradient evaluation took 1.5e-05 seconds
-
-14:03:27.449 [info]   1000 transitions using 10 leapfrog steps per transition would take 0.15 seconds.
-
-14:03:27.449 [info]   Adjust your expectations accordingly!
-
-14:03:27.449 [info]   Gradient evaluation took 6e-06 seconds
-
-14:03:27.449 [info]   1000 transitions using 10 leapfrog steps per transition would take 0.06 seconds.
-
-14:03:27.449 [info]   Adjust your expectations accordingly!
-
-14:03:27.449 [info]   Gradient evaluation took 5e-06 seconds
-
-14:03:27.449 [info]   1000 transitions using 10 leapfrog steps per transition would take 0.05 seconds.
-
-14:03:27.449 [info]   Adjust your expectations accordingly!
-
-14:03:27.449 [info]   Gradient evaluation took 2e-06 seconds
-
-14:03:27.449 [info]   1000 transitions using 10 leapfrog steps per transition would take 0.02 seconds.
-
-14:03:27.449 [info]   Adjust your expectations accordingly!
-
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-%ExStan.Fit{
-  stan_outputs: ["{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Gradient evaluation took 1.5e-05 seconds\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:1000 transitions using 10 leapfrog steps per transition would take 0.15 seconds.\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Adjust your expectations accordingly!\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:    1 / 2000 [  0%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  100 / 2000 [  5%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  200 / 2000 [ 10%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  300 / 2000 [ 15%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  400 / 2000 [ 20%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  500 / 2000 [ 25%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  600 / 2000 [ 30%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  700 / 2000 [ 35%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  800 / 2000 [ 40%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  900 / 2000 [ 45%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1000 / 2000 [ 50%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1001 / 2000 [ 50%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1100 / 2000 [ 55%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1200 / 2000 [ 60%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1300 / 2000 [ 65%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1400 / 2000 [ 70%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1500 / 2000 [ 75%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1600 / 2000 [ 80%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1700 / 2000 [ 85%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1800 / 2000 [ 90%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1900 / 2000 [ 95%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 2000 / 2000 [100%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info: Elapsed Time: 0.391 seconds (Warm-up)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:               2.255 seconds (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:               2.646 seconds (Total)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"initialization\",\"values\":[1.2581157666621526,0.8329508414649274,-0.33863194339086646]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Adaptation terminated\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Step size = 3.09257e-05\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Diagonal elements of inverse mass matrix:\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"9.90099e-06, 9.90099e-06, 0.0663747\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":587.9910970328491,\"accept_stat__\":0.7671849715984358,\"stepsize__\":0.0000309256611958225,\"treedepth__\":2.0,\"n_leapfrog__\":3.0,\"divergent__\":0.0,\"energy__\":-587.52944704176,\"alpha\":3.800530025865068,\"beta\":0.5000000893718166,\"sigma\":0.000006065217639161457}}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":588.3468092765349,\"accept_stat__\":0.9987217643953075,\"stepsize__\":0.0000309256611958225,\"treedepth__\":5.0,\"n_leapfrog__\":31.0,\"divergent__\":0.0,\"energy__\":-587.6379786570316,\"alpha\":3.8005303641736396,\"beta\":0.5000000055594364,\"sigma\":0.000006065279416356679}}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":586.92947651463,\"accept_stat__\":0.9853157607690973,\"stepsize__\":0.0000309256611958225,\"treedepth__\":3.0,\"n_leapfrog__\":13.0,\"divergent__\":0.0,\"energy__\":-586.2976756607934,\"alpha\":3.8005313107489444,\"beta\":0.49999999474080417,\"s" <> ...,
-   "{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Gradient evaluation took 6e-06 seconds\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:1000 transitions using 10 leapfrog steps per transition would take 0.06 seconds.\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Adjust your expectations accordingly!\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:    1 / 2000 [  0%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  100 / 2000 [  5%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  200 / 2000 [ 10%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  300 / 2000 [ 15%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  400 / 2000 [ 20%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  500 / 2000 [ 25%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  600 / 2000 [ 30%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  700 / 2000 [ 35%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  800 / 2000 [ 40%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  900 / 2000 [ 45%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1000 / 2000 [ 50%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1001 / 2000 [ 50%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1100 / 2000 [ 55%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1200 / 2000 [ 60%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1300 / 2000 [ 65%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1400 / 2000 [ 70%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1500 / 2000 [ 75%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1600 / 2000 [ 80%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1700 / 2000 [ 85%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1800 / 2000 [ 90%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1900 / 2000 [ 95%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 2000 / 2000 [100%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info: Elapsed Time: 0.302 seconds (Warm-up)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:               0.551 seconds (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:               0.853 seconds (Total)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"initialization\",\"values\":[-0.1960556157216351,0.8470293026624804,0.624605555886439]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Adaptation terminated\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Step size = 3.7156e-05\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Diagonal elements of inverse mass matrix:\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"9.901e-06, 9.90099e-06, 0.3112\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":575.8334770445014,\"accept_stat__\":1.0,\"stepsize__\":0.00003715603013737362,\"treedepth__\":4.0,\"n_leapfrog__\":19.0,\"divergent__\":0.0,\"energy__\":-574.1904344990829,\"alpha\":3.8005292754231516,\"beta\":0.5000000891706737,\"sigma\":0.000007789508608113704}}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":576.2572035691891,\"accept_stat__\":0.9925253615948199,\"stepsize__\":0.00003715603013737362,\"treedepth__\":10.0,\"n_leapfrog__\":1023.0,\"divergent__\":0.0,\"energy__\":-574.8847462577645,\"alpha\":3.800529944829909,\"beta\":0.49999990625959286,\"sigma\":0.000007742797009327302}}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":576.3927565056811,\"accept_stat__\":0.9723360523008648,\"stepsize__\":0.00003715603013737362,\"treedepth__\":9.0,\"n_leapfrog__\":743.0,\"divergent__\":0.0,\"energy__\":-575.5606122472595,\"alpha\":3.8005291888588688,\"beta\":0.50000003269696,\"sigma\":0.0000077" <> ...,
-   "{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Gradient evaluation took 5e-06 seconds\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:1000 transitions using 10 leapfrog steps per transition would take 0.05 seconds.\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Adjust your expectations accordingly!\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:    1 / 2000 [  0%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  100 / 2000 [  5%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  200 / 2000 [ 10%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  300 / 2000 [ 15%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  400 / 2000 [ 20%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  500 / 2000 [ 25%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  600 / 2000 [ 30%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  700 / 2000 [ 35%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  800 / 2000 [ 40%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  900 / 2000 [ 45%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1000 / 2000 [ 50%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1001 / 2000 [ 50%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1100 / 2000 [ 55%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1200 / 2000 [ 60%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1300 / 2000 [ 65%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1400 / 2000 [ 70%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1500 / 2000 [ 75%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1600 / 2000 [ 80%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1700 / 2000 [ 85%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1800 / 2000 [ 90%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1900 / 2000 [ 95%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 2000 / 2000 [100%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info: Elapsed Time: 0.327 seconds (Warm-up)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:               1.639 seconds (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:               1.966 seconds (Total)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"initialization\",\"values\":[1.7946017563043864,-0.1330699284765935,0.3403569931493613]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Adaptation terminated\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Step size = 2.01391e-05\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Diagonal elements of inverse mass matrix:\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"9.90099e-06, 9.90099e-06, 0.316031\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":602.4407281975738,\"accept_stat__\":0.9997458295298314,\"stepsize__\":0.000020139065931672698,\"treedepth__\":10.0,\"n_leapfrog__\":1023.0,\"divergent__\":0.0,\"energy__\":-600.1452504958508,\"alpha\":3.8005287839286199,\"beta\":0.5000000023977999,\"sigma\":0.000004460576307853937}}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":602.8226626369855,\"accept_stat__\":0.8775186587769248,\"stepsize__\":0.000020139065931672698,\"treedepth__\":10.0,\"n_leapfrog__\":1023.0,\"divergent__\":0.0,\"energy__\":-600.8136527192323,\"alpha\":3.800529697629748,\"beta\":0.49999992766616965,\"sigma\":0.000004479917179702978}}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":602.0430626435804,\"accept_stat__\":0.9728636600426427,\"stepsize__\":0.000020139065931672698,\"treedepth__\":5.0,\"n_leapfrog__\":39.0,\"divergent__\":0.0,\"energy__\":-601.8390791773202,\"alpha\":3.800530334263103,\"beta\":0.5000000" <> ...,
-   "{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Gradient evaluation took 2e-06 seconds\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:1000 transitions using 10 leapfrog steps per transition would take 0.02 seconds.\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Adjust your expectations accordingly!\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:    1 / 2000 [  0%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  100 / 2000 [  5%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  200 / 2000 [ 10%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  300 / 2000 [ 15%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  400 / 2000 [ 20%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  500 / 2000 [ 25%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  600 / 2000 [ 30%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  700 / 2000 [ 35%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  800 / 2000 [ 40%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration:  900 / 2000 [ 45%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1000 / 2000 [ 50%]  (Warmup)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1001 / 2000 [ 50%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1100 / 2000 [ 55%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1200 / 2000 [ 60%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1300 / 2000 [ 65%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1400 / 2000 [ 70%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1500 / 2000 [ 75%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1600 / 2000 [ 80%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1700 / 2000 [ 85%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1800 / 2000 [ 90%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 1900 / 2000 [ 95%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:Iteration: 2000 / 2000 [100%]  (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info: Elapsed Time: 0.355 seconds (Warm-up)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:               0.961 seconds (Sampling)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:               1.316 seconds (Total)\"]}\n{\"version\":1,\"topic\":\"logger\",\"values\":[\"info:\"]}\n{\"version\":1,\"topic\":\"initialization\",\"values\":[1.0320187065534335,1.2702150611386145,-0.13596184723671479]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Adaptation terminated\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Step size = 2.39805e-05\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"Diagonal elements of inverse mass matrix:\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":[\"9.90099e-06, 9.90099e-06, 0.0809963\"]}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":589.9440245675702,\"accept_stat__\":0.9716660440362913,\"stepsize__\":0.000023980502294135974,\"treedepth__\":2.0,\"n_leapfrog__\":3.0,\"divergent__\":0.0,\"energy__\":-589.3579173463645,\"alpha\":3.800528565175013,\"beta\":0.5000000198314079,\"sigma\":0.000005762751343850617}}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":591.0659841128927,\"accept_stat__\":0.9981206469003825,\"stepsize__\":0.000023980502294135974,\"treedepth__\":8.0,\"n_leapfrog__\":351.0,\"divergent__\":0.0,\"energy__\":-588.9149208916073,\"alpha\":3.8005295419394975,\"beta\":0.4999999740847372,\"sigma\":0.0000057604358542679158}}\n{\"version\":1,\"topic\":\"sample\",\"values\":{\"lp__\":591.0211760635042,\"accept_stat__\":0.9994018920476551,\"stepsize__\":0.000023980502294135974,\"treedepth__\":10.0,\"n_leapfrog__\":1023.0,\"divergent__\":0.0,\"energy__\":-590.1392789211635,\"alpha\":3.80052917147452,\"beta\":0.499999994" <> ...],
-  num_chains: 4,
-  param_names: ["alpha", "beta", "sigma"],
-  feature_names: ["accept_stat__", "alpha", "beta", "divergent__", "energy__", "lp__",
-   "n_leapfrog__", "sigma", "stepsize__", "treedepth__"],
-  constrained_param_names: ["alpha", "beta", "sigma"],
-  dims: [[], [], []],
-  num_warmup: 1000,
-  num_samples: 1000,
-  num_thin: 1,
-  num_flat: 1,
-  save_warmup: false,
-  sample_and_sampler_param_names: ["accept_stat__", "divergent__", "energy__", "lp__",
-   "n_leapfrog__", "stepsize__", "treedepth__"],
-  _draws: #Nx.Tensor<
-    f32[10][1000][4]
-    [
-      [
-        [0.7671849727630615, 1.0, 0.9997458457946777, 0.9716660380363464],
-        [0.9987217783927917, 0.9925253391265869, 0.8775186538696289, 0.9981206655502319],
-        [0.98531574010849, 0.9723360538482666, 0.9728636741638184, 0.999401867389679],
-        [0.9563790559768677, 0.9917654991149902, 0.9722129702568054, 0.9999864101409912],
-        [0.8421833515167236, 0.7987232804298401, 0.999872088432312, 0.9969750046730042],
-        [0.9997004866600037, 0.8874934911727905, 0.9943376779556274, 0.9164796471595764],
-        [0.7316648364067078, 0.9268400073051453, 0.9834601879119873, 0.998721182346344],
-        [0.5877278447151184, 0.9057027101516724, 0.9757460951805115, 0.9305294156074524],
-        [0.9924606680870056, 0.9029162526130676, 0.9978228807449341, 0.9791396856307983],
-        [0.6427217721939087, ...],
-        ...
-      ],
-      ...
-    ]
-  >
-}
+fit = Model.sample(model, num_chains: 4, num_warmup: 1000, num_samples: 2000)
 ```
 
 ### Evaluate
@@ -350,32 +134,8 @@ fit = Model.sample(model, num_chains: 4, num_samples: 1000)
 fit.param_names
 ```
 
-<!-- livebook:{"output":true} -->
-
-```
-["alpha", "beta", "sigma"]
-```
-
 ```elixir
 df = Fit.to_frame(fit)
-```
-
-<!-- livebook:{"output":true} -->
-
-```text
-#Explorer.DataFrame<
-  Polars[4000 x 10]
-  accept_stat__ f64 [0.7671849727630615, 1.0, 0.9997458457946777, 0.9716660380363464, 0.9987217783927917, ...]
-  alpha f64 [3.800529956817627, 3.8005292415618896, 3.8005287647247314, 3.8005285263061523, 3.800530433654785, ...]
-  beta f64 [0.5000000596046448, 0.5000000596046448, 0.5, 0.5, 0.5, ...]
-  divergent__ f64 [0.0, 0.0, 0.0, 0.0, 0.0, ...]
-  energy__ f64 [-587.5294189453125, -574.1904296875, -600.145263671875, -589.35791015625, -587.6380004882812, ...]
-  lp__ f64 [587.9910888671875, 575.83349609375, 602.4407348632812, 589.9440307617188, 588.3468017578125, ...]
-  n_leapfrog__ f64 [3.0, 19.0, 1023.0, 3.0, 31.0, ...]
-  sigma f64 [6.065217803552514e-6, 7.789508345013019e-6, 4.460576292331098e-6, 5.762751243310049e-6, 6.065279194444884e-6, ...]
-  stepsize__ f64 [3.09256611217279e-5, 3.71560308849439e-5, 2.0139066691626795e-5, 2.398050310148392e-5, 3.09256611217279e-5, ...]
-  treedepth__ f64 [2.0, 4.0, 10.0, 2.0, 5.0, ...]
->
 ```
 
 ```elixir
@@ -419,6 +179,28 @@ Vl.new(width: 400, height: 300)
 ```
 
 ```elixir
+predicted_alpha =
+  df
+  |> DF.select(["alpha"])
+  |> DF.to_series()
+  |> Map.get("alpha")
+
+predicted_beta =
+  df
+  |> DF.select(["beta"])
+  |> DF.to_series()
+  |> Map.get("beta")
+
+predicted_sigma =
+  df
+  |> DF.select(["sigma"])
+  |> DF.to_series()
+  |> Map.get("sigma")
+```
+
+```elixir
+key = Nx.Random.key(42)
+
 alpha_mean =
   df
   |> DF.select(["alpha"])
@@ -440,92 +222,33 @@ sigma_mean =
   |> Map.get("sigma")
   |> Explorer.Series.mean()
 
-{predicted, _} =
-  Nx.Random.normal(
-    key,
-    Nx.multiply(beta_mean, x) |> Nx.add(alpha_mean),
-    sigma_mean
-  )
+first = Nx.multiply(beta_mean, x) |> Nx.add(alpha_mean)
+{noise, _key} = Nx.Random.normal(key, 0, sigma_mean, shape: {Nx.size(x)})
+predicted = first
 
 x_list = Nx.to_list(x)
 y_list = Nx.to_list(y)
 predicted_list = Nx.to_list(predicted)
+noise_list = Nx.to_list(noise)
 
-result = DF.new(x: x_list, y: y_list, predicted: predicted_list) |> DF.to_rows()
-```
-
-<!-- livebook:{"output":true} -->
-
-```
-[
-  %{"predicted" => -1.949672818183899, "x" => -11.500417709350586, "y" => -1.9496791362762451},
-  %{"predicted" => 4.030880451202393, "x" => 0.4606887996196747, "y" => 4.030874252319336},
-  %{"predicted" => 5.440330505371094, "x" => 3.2795891761779785, "y" => 5.440324306488037},
-  %{"predicted" => 7.201968669891357, "x" => 6.802865028381348, "y" => 7.201962471008301},
-  %{"predicted" => 6.395902156829834, "x" => 5.190732955932617, "y" => 6.3958964347839355},
-  %{"predicted" => -1.2730952501296997, "x" => -10.147262573242188, "y" => -1.273101568222046},
-  %{"predicted" => 12.157707214355469, "x" => 16.71434211730957, "y" => 12.157700538635254},
-  %{"predicted" => -1.2626010179519653, "x" => -10.126274108886719, "y" => -1.2626073360443115},
-  %{"predicted" => -6.422898769378662, "x" => -20.446868896484375, "y" => -6.4229044914245605},
-  %{"predicted" => -5.203944683074951, "x" => -18.008960723876953, "y" => -5.20395040512085},
-  %{"predicted" => 5.64393949508667, "x" => 3.6868066787719727, "y" => 5.643933296203613},
-  %{"predicted" => -0.20379745960235596, "x" => -8.0086669921875, "y" => -0.20380373299121857},
-  %{"predicted" => 0.022318953648209572, "x" => -7.556434154510498, "y" => 0.02231268584728241},
-  %{"predicted" => 4.131855010986328, "x" => 0.6626378297805786, "y" => 4.1318488121032715},
-  %{"predicted" => -2.512042284011841, "x" => -12.62515640258789, "y" => -2.5120484828948975},
-  %{"predicted" => 11.381648063659668, "x" => 15.162223815917969, "y" => 11.381641387939453},
-  %{"predicted" => 5.752979278564453, "x" => 3.904886484146118, "y" => 5.7529730796813965},
-  %{"predicted" => 2.3281173706054688, "x" => -2.9448368549346924, "y" => 2.328111410140991},
-  %{"predicted" => 5.810964107513428, "x" => 4.020855903625488, "y" => 5.810957908630371},
-  %{"predicted" => 6.050901889801025, "x" => 4.500731945037842, "y" => 6.050896167755127},
-  %{"predicted" => -10.192605018615723, "x" => -27.986282348632812, "y" => -10.192611694335938},
-  %{"predicted" => 7.333913326263428, "x" => 7.066754341125488, "y" => 7.333907127380371},
-  %{"predicted" => 2.2157387733459473, "x" => -3.1695942878723145, "y" => 2.2157325744628906},
-  %{"predicted" => 9.165895462036133, "x" => 10.730718612670898, "y" => 9.165888786315918},
-  %{"predicted" => 5.340632915496826, "x" => 3.0801944732666016, "y" => 5.340627193450928},
-  %{"predicted" => 11.912810325622559, "x" => 16.22454833984375, "y" => 11.912803649902344},
-  %{"predicted" => 4.6455864906311035, "x" => 1.6901016235351562, "y" => 4.645580768585205},
-  %{"predicted" => 3.1428449153900146, "x" => -1.3153820037841797, "y" => 3.142838716506958},
-  %{"predicted" => 6.5493035316467285, "x" => 5.497535705566406, "y" => 6.54929780960083},
-  %{"predicted" => 2.3734006881713867, "x" => -2.8542704582214355, "y" => 2.37339448928833},
-  %{"predicted" => -3.802220106124878, "x" => -15.205512046813965, "y" => -3.8022263050079346},
-  %{"predicted" => -6.107985019683838, "x" => -19.817041397094727, "y" => -6.107990741729736},
-  %{"predicted" => 9.0289945602417, "x" => 10.456916809082031, "y" => 9.028987884521484},
-  %{"predicted" => 0.01987564004957676, "x" => -7.561320781707764, "y" => 0.019869372248649597},
-  %{"predicted" => 1.987210750579834, "x" => -3.62665057182312, "y" => 1.9872043132781982},
-  %{"predicted" => 0.15916669368743896, "x" => -7.28273868560791, "y" => 0.15916042029857635},
-  %{"predicted" => -2.8273189067840576, "x" => -13.255709648132324, "y" => -2.8273251056671143},
-  %{"predicted" => 2.895188808441162, "x" => -1.8106944561004639, "y" => 2.8951823711395264},
-  %{"predicted" => -3.0148680210113525, "x" => -13.630807876586914, "y" => -3.014874219894409},
-  %{"predicted" => 4.166916370391846, "x" => 0.7327606678009033, "y" => 4.166910171508789},
-  %{"predicted" => 3.44807505607605, "x" => -0.704921543598175, "y" => 3.448068857192993},
-  %{"predicted" => -0.11650574952363968, "x" => -7.834083557128906, "y" => -0.11651201546192169},
-  %{"predicted" => 9.255393981933594, "x" => 10.909714698791504, "y" => 9.255386352539062},
-  %{"predicted" => 8.39951229095459, "x" => 9.197951316833496, "y" => 8.399505615234375},
-  %{"predicted" => 2.0049726963043213, "x" => -3.5911264419555664, "y" => 2.0049664974212646},
-  %{"predicted" => 5.249185085296631, "x" => 2.897298812866211, "y" => 5.249179363250732},
-  %{"predicted" => 3.494089126586914, "x" => -0.6128933429718018, "y" => 3.4940831661224365},
-  %{"predicted" => 9.396716117858887, "x" => 11.19235897064209, ...},
-  %{"predicted" => 8.442588806152344, ...},
-  %{...}
-]
+result =
+  DF.new(x: x_list, y: y_list, predicted: predicted_list, noise: noise_list) |> DF.to_rows()
 ```
 
 ```elixir
-Vl.new(width: 400, height: 300, title: "Original Values")
-|> Vl.data_from_values(result)
-|> Vl.mark(:point)
-|> Vl.encode_field(:x, "x", type: :quantitative)
-|> Vl.encode_field(:y, "y", type: :quantitative)
-```
-
-```elixir
-Vl.new(width: 400, height: 300, title: "Predicted Values")
+Vl.new(width: 400, height: 300, title: "Linear Regression Plot")
 |> Vl.data_from_values(result)
 |> Vl.encode_field(:x, "x", type: :quantitative)
 |> Vl.layers([
   Vl.new()
+  |> Vl.mark(:point)
+  |> Vl.encode_field(:y, "y", type: :quantitative),
+  Vl.new()
+  |> Vl.mark(:errorband, extent: :ci)
+  |> Vl.encode_field(:y, "predicted", type: :quantitative, title: "Predicted "),
+  Vl.new()
   |> Vl.mark(:line)
-  |> Vl.encode_field(:y, "predicted", type: :quantitative)
+  |> Vl.encode_field(:y, "predicted", type: :quantitative, aggregate: :mean)
+  |> Vl.encode_field(:x, "x", type: :quantitative)
 ])
 ```
