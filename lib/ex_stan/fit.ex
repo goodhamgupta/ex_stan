@@ -8,6 +8,7 @@ defmodule ExStan.Fit do
   """
 
   alias __MODULE__
+  @epsilon 1.0e-8
 
   defstruct [
     :stan_outputs,
@@ -185,12 +186,12 @@ defmodule ExStan.Fit do
     if Code.ensure_loaded?(Explorer) do
       alias Explorer.DataFrame
 
-      {first_dim, _second_dim, _third_dim} = Nx.shape(draws)
+      {num_features, _, _} = Nx.shape(draws)
 
-      if length(columns) == first_dim do
+      if length(columns) == num_features do
         [
           columns,
-          draws |> Nx.reshape({first_dim, :auto}) |> Nx.to_list()
+          draws |> Nx.reshape({num_features, :auto}) |> Nx.to_list()
         ]
         |> Enum.zip()
         |> DataFrame.new()
@@ -213,19 +214,30 @@ defmodule ExStan.Fit do
 
   ## Returns
 
-  A list of R-hat values for each parameter.
+  A map of parameter names to their corresponding R-hat values.
+
+  TODO: Occasionally, we get a value much higher than 1.0. This is likely due to a bug in the calculation. We need to investigate this further.
 
   ## Errors
 
   - Raises an error if the draws tensor does not have the correct dimensions.
   """
-  def compute_rhat(%Fit{_draws: draws, param_names: param_names, num_chains: num_chains} = fit) do
-    # Calculate the within-chain variance
+  def _compute_rhat(
+        %Fit{
+          _draws: draws,
+          constrained_param_names: constrained_param_names,
+          num_chains: num_chains
+        } = fit
+      ) do
+    num_samples = Nx.shape(draws) |> elem(1)
+
+    # Calculate the within-chain variance for each parameter
     w =
-      Enum.map(0..(length(param_names) - 1), fn param_index ->
+      Enum.map(0..(length(constrained_param_names) - 1), fn param_index ->
         Enum.map(0..(num_chains - 1), fn chain_index ->
           chain_draws =
-            Nx.slice(draws, [param_index, 0, chain_index], [1, 1, 1]) |> Nx.to_flat_list()
+            Nx.slice(draws, [param_index, 0, chain_index], [1, num_samples, 1])
+            |> Nx.to_flat_list()
 
           mean_draw = Enum.reduce(chain_draws, 0, &(&1 + &2)) |> Kernel./(Enum.count(chain_draws))
 
@@ -233,6 +245,7 @@ defmodule ExStan.Fit do
             Enum.reduce(chain_draws, 0, fn draw, acc ->
               acc + (draw - mean_draw) * (draw - mean_draw)
             end)
+            |> Kernel./(Enum.count(chain_draws) - 1)
 
           variance_draw
         end)
@@ -240,48 +253,40 @@ defmodule ExStan.Fit do
         |> Kernel./(num_chains)
       end)
 
-    # Calculate the between-chain variance
-    chain_means =
-      Enum.map(0..(length(param_names) - 1), fn param_index ->
-        Enum.map(0..(num_chains - 1), fn chain_index ->
-          chain_draws =
-            Nx.slice(draws, [param_index, 0, chain_index], [1, 1, 1]) |> Nx.to_flat_list()
-
-          Enum.reduce(chain_draws, 0, &(&1 + &2)) |> Kernel./(Enum.count(chain_draws))
-        end)
-      end)
-
-    grand_means =
-      Enum.map(chain_means, fn param_chain_means ->
-        Enum.reduce(param_chain_means, 0, &(&1 + &2)) |> Kernel./(num_chains)
-      end)
-
+    # Calculate the between-chain variance for each parameter
     b =
-      Enum.map(0..(length(param_names) - 1), fn param_index ->
-        Enum.reduce(0..(num_chains - 1), 0, fn chain_index, acc ->
-          diff =
-            Enum.at(chain_means, param_index)
-            |> Enum.at(chain_index)
-            |> Kernel.-(Enum.at(grand_means, param_index))
+      Enum.map(0..(length(constrained_param_names) - 1), fn param_index ->
+        chain_means =
+          Enum.map(0..(num_chains - 1), fn chain_index ->
+            chain_draws =
+              Nx.slice(draws, [param_index, 0, chain_index], [1, num_samples, 1])
+              |> Nx.to_flat_list()
 
+            Enum.reduce(chain_draws, 0, &(&1 + &2)) |> Kernel./(Enum.count(chain_draws))
+          end)
+
+        grand_mean = Enum.reduce(chain_means, 0, &(&1 + &2)) |> Kernel./(num_chains)
+
+        Enum.reduce(chain_means, 0, fn chain_mean, acc ->
+          diff = chain_mean - grand_mean
           acc + diff * diff
         end)
         |> Kernel./(num_chains - 1)
       end)
 
-    # Estimate the variance of the target distribution
+    # Estimate the variance of the target distribution for each parameter
     var_plus =
       Enum.zip_with(w, b, fn w_val, b_val ->
         ((num_chains - 1) * w_val + b_val) / num_chains
       end)
 
-    # Calculate the potential scale reduction factor
+    # Calculate the potential scale reduction factor (Rhat) for each parameter
     rhat =
-      Enum.map(var_plus, fn var_plus_val ->
-        w_val = Enum.at(w, var_plus_val)
-        :math.sqrt(var_plus_val / w_val)
+      Enum.zip_with(var_plus, w, fn var_plus_val, w_val ->
+        :math.sqrt(var_plus_val / (w_val + @epsilon))
       end)
 
-    rhat
+    Enum.zip(constrained_param_names, rhat) |> Enum.into(%{})
   end
+
 end
