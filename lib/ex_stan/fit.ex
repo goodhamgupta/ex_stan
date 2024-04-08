@@ -23,7 +23,7 @@ defmodule ExStan.Fit do
     :num_flat,
     :save_warmup,
     :sample_and_sampler_param_names,
-    :_draws
+    :draws
   ]
 
   defp validate(%Fit{num_thin: num_thin}) when not is_integer(num_thin) do
@@ -37,7 +37,7 @@ defmodule ExStan.Fit do
     result = do_parse_draws(fit)
 
     Map.merge(fit, %{
-      _draws: result.draws,
+      draws: result.draws,
       feature_names: result.feature_names,
       sample_and_sampler_param_names: result.sample_and_sampler_param_names
     })
@@ -180,7 +180,7 @@ defmodule ExStan.Fit do
 
   """
   def to_frame(%Fit{
-        _draws: draws,
+        draws: draws,
         feature_names: columns
       }) do
     if Code.ensure_loaded?(Explorer) do
@@ -224,7 +224,7 @@ defmodule ExStan.Fit do
   """
   def _compute_rhat(
         %Fit{
-          _draws: draws,
+          draws: draws,
           constrained_param_names: constrained_param_names,
           num_chains: num_chains
         } = fit
