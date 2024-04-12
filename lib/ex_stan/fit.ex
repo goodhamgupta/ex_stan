@@ -164,13 +164,10 @@ defmodule ExStan.Fit do
   ## Parameters
 
     - `%Fit{}`: A `Fit` struct containing the draws and feature names.
-    - Optional `opts`:
-      - `:flatten` (boolean): If true, the draws are flattened into a single list.
-        If false, the draws are nested with chain and sample numbers.
 
   ## Returns
 
-  A `DataFrame` object with the draws as rows and feature names as columns.
+  A `DataFrame` object with the draws as rows and feature names with chain and sample indexes as columns.
 
   ## Errors
 
@@ -178,52 +175,29 @@ defmodule ExStan.Fit do
   - Raises an error if the `Explorer` module is not available.
 
   """
-  def to_frame(%Fit{draws: draws, feature_names: columns}, opts \\ []) do
+  def to_frame(%Fit{draws: draws, feature_names: feature_names}) do
     unless Code.ensure_loaded?(Explorer) do
       raise "Explorer is not available. Please install it using `mix deps.get`"
     end
 
     alias Explorer.DataFrame
 
-    draws =
-      if Keyword.get(opts, :flatten, false) do
-        create_nested_draws(draws, columns)
-      else
-        flatten_draws(draws, columns)
-      end
-
-    DataFrame.new(draws)
-  end
-
-  defp flatten_draws(draws, columns) do
-    {num_features, _, _} = Nx.shape(draws)
-
-    if length(columns) == num_features do
-      [
-        columns,
-        draws |> Nx.reshape({num_features, :auto}) |> Nx.to_list()
-      ]
-      |> Enum.zip()
-    else
-      raise "Length of draws and columns do not match"
-    end
-  end
-
-  defp create_nested_draws(draws, columns) do
+    # TODO: O(N^3) complexity. Can be optimized.
     draws
+    |> Nx.transpose()
     |> Nx.to_list()
-    |> Enum.with_index(fn elem, idx ->
-      Enum.with_index(elem, fn sample_val, sample_idx ->
-        Enum.with_index(sample_val, fn chain_val, chain_idx ->
-          %{
-            "param" => Enum.at(columns, idx),
-            "value" => chain_val,
-            "chain_number" => chain_idx,
-            "sample_number" => sample_idx
-          }
-        end)
+    |> Enum.with_index(fn chain_elem, chain_idx ->
+      Enum.with_index(chain_elem, fn sample_elem, sample_idx ->
+        feature_names
+        |> Enum.zip(sample_elem)
+        |> Enum.into(%{})
+        |> Map.merge(%{
+          "sample_number" => sample_idx + 1,
+          "chain_number" => chain_idx + 1
+        })
       end)
     end)
     |> List.flatten()
+    |> DataFrame.new()
   end
 end
