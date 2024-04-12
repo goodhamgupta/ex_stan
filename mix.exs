@@ -51,7 +51,8 @@ defmodule ExStan.MixProject do
     [
       main: "ExStan",
       source_ref: "v#{@version}",
-      source_url: @repo_url
+      source_url: @repo_url,
+      extras: ["examples/iris_linear_regression.livemd"],
     ]
   end
 end

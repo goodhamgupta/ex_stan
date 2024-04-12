@@ -1,4 +1,15 @@
 defmodule ExStan do
+  @moduledoc """
+  **ExStan** is a Elixir interface to Stan, a package for Bayesian inference.
+
+  Stan® is a state-of-the-art platform for statistical modeling and
+  high-performance statistical computation. Thousands of users rely on Stan for
+  statistical modeling, data analysis, and prediction in the social, biological,
+  and physical sciences, engineering, and business.
+
+  This project is primarily based on the [PyStan](https://github.com/stan-dev/pystan) repository.
+  """
+
   require Logger
 
   alias ExStan.Model
