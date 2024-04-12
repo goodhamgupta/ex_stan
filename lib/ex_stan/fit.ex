@@ -141,6 +141,11 @@ defmodule ExStan.Fit do
 
   # Public API
 
+  @doc """
+  Creates a new `Fit` struct, given the specified options.
+  It will validate the options and parse the draws from the Stan outputs.
+  """
+
   def new(opts) do
     %Fit{
       stan_outputs: Keyword.get(opts, :stan_outputs),
@@ -160,6 +165,7 @@ defmodule ExStan.Fit do
 
   @doc """
   Converts the draws from a `Fit` struct into a data frame.
+  This function iterates over the draws and feature names individually, and will get slower as the number of draws/chains increases.
 
   ## Parameters
 
@@ -171,7 +177,6 @@ defmodule ExStan.Fit do
 
   ## Errors
 
-  - Raises an error if the length of draws and columns do not match.
   - Raises an error if the `Explorer` module is not available.
 
   """

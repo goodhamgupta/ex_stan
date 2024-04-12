@@ -1,7 +1,8 @@
 defmodule ExStan.Client do
   @moduledoc """
-  Client for interacting with the HTTPStan server.
+  Lightweight client for interacting with the HTTPStan server.
   """
+
   require Logger
 
   @base_url Application.compile_env(:ex_stan, :httpstan_url, "http://localhost:8080/v1")

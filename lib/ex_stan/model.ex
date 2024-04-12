@@ -1,5 +1,5 @@
 defmodule ExStan.Model do
-  @doc """
+  @moduledoc """
   Stores data associated with a Stan model and proxies calls to Stan services.
 
   Returned by `ExStan.build`. Users will not instantiate this class directly.
