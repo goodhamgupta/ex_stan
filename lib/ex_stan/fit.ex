@@ -8,7 +8,6 @@ defmodule ExStan.Fit do
   """
 
   alias __MODULE__
-  @epsilon 1.0e-8
 
   defstruct [
     :stan_outputs,
@@ -162,12 +161,12 @@ defmodule ExStan.Fit do
   @doc """
   Converts the draws from a `Fit` struct into a data frame.
 
-  This function will attempt to load the `Explorer` module to create a data frame.
-  If `Explorer` is not available, it will raise an error instructing the user to install it.
-
   ## Parameters
 
     - `%Fit{}`: A `Fit` struct containing the draws and feature names.
+    - Optional `opts`:
+      - `:flatten` (boolean): If true, the draws are flattened into a single list.
+        If false, the draws are nested with chain and sample numbers.
 
   ## Returns
 
@@ -179,113 +178,52 @@ defmodule ExStan.Fit do
   - Raises an error if the `Explorer` module is not available.
 
   """
-  def to_frame(%Fit{
-        draws: draws,
-        feature_names: columns
-      }) do
-    if Code.ensure_loaded?(Explorer) do
-      alias Explorer.DataFrame
-
-      {num_features, _, _} = Nx.shape(draws)
-
-      if length(columns) == num_features do
-        [
-          columns,
-          draws |> Nx.reshape({num_features, :auto}) |> Nx.to_list()
-        ]
-        |> Enum.zip()
-        |> DataFrame.new()
-      else
-        raise "Length of draws and columns do not match"
-      end
-    else
+  def to_frame(%Fit{draws: draws, feature_names: columns}, opts \\ []) do
+    unless Code.ensure_loaded?(Explorer) do
       raise "Explorer is not available. Please install it using `mix deps.get`"
+    end
+
+    alias Explorer.DataFrame
+
+    draws =
+      if Keyword.get(opts, :flatten, false) do
+        create_nested_draws(draws, columns)
+      else
+        flatten_draws(draws, columns)
+      end
+
+    DataFrame.new(draws)
+  end
+
+  defp flatten_draws(draws, columns) do
+    {num_features, _, _} = Nx.shape(draws)
+
+    if length(columns) == num_features do
+      [
+        columns,
+        draws |> Nx.reshape({num_features, :auto}) |> Nx.to_list()
+      ]
+      |> Enum.zip()
+    else
+      raise "Length of draws and columns do not match"
     end
   end
 
-  @doc """
-  Computes the potential scale reduction factor (R-hat) for each parameter.
-
-  R-hat is a convergence diagnostic that measures the similarity between multiple Markov chains. An R-hat value close to 1 indicates that the chains have converged to a common distribution.
-
-  ## Parameters
-
-    - `%Fit{}`: A `Fit` struct containing the draws, parameter names, and the number of chains.
-
-  ## Returns
-
-  A map of parameter names to their corresponding R-hat values.
-
-  TODO: Occasionally, we get a value much higher than 1.0. This is likely due to a bug in the calculation. We need to investigate this further.
-
-  ## Errors
-
-  - Raises an error if the draws tensor does not have the correct dimensions.
-  """
-  def _compute_rhat(
-        %Fit{
-          draws: draws,
-          constrained_param_names: constrained_param_names,
-          num_chains: num_chains
-        } = fit
-      ) do
-    num_samples = Nx.shape(draws) |> elem(1)
-
-    # Calculate the within-chain variance for each parameter
-    w =
-      Enum.map(0..(length(constrained_param_names) - 1), fn param_index ->
-        Enum.map(0..(num_chains - 1), fn chain_index ->
-          chain_draws =
-            Nx.slice(draws, [param_index, 0, chain_index], [1, num_samples, 1])
-            |> Nx.to_flat_list()
-
-          mean_draw = Enum.reduce(chain_draws, 0, &(&1 + &2)) |> Kernel./(Enum.count(chain_draws))
-
-          variance_draw =
-            Enum.reduce(chain_draws, 0, fn draw, acc ->
-              acc + (draw - mean_draw) * (draw - mean_draw)
-            end)
-            |> Kernel./(Enum.count(chain_draws) - 1)
-
-          variance_draw
+  defp create_nested_draws(draws, columns) do
+    draws
+    |> Nx.to_list()
+    |> Enum.with_index(fn elem, idx ->
+      Enum.with_index(elem, fn sample_val, sample_idx ->
+        Enum.with_index(sample_val, fn chain_val, chain_idx ->
+          %{
+            "param" => Enum.at(columns, idx),
+            "value" => chain_val,
+            "chain_number" => chain_idx,
+            "sample_number" => sample_idx
+          }
         end)
-        |> Enum.reduce(0, &(&1 + &2))
-        |> Kernel./(num_chains)
       end)
-
-    # Calculate the between-chain variance for each parameter
-    b =
-      Enum.map(0..(length(constrained_param_names) - 1), fn param_index ->
-        chain_means =
-          Enum.map(0..(num_chains - 1), fn chain_index ->
-            chain_draws =
-              Nx.slice(draws, [param_index, 0, chain_index], [1, num_samples, 1])
-              |> Nx.to_flat_list()
-
-            Enum.reduce(chain_draws, 0, &(&1 + &2)) |> Kernel./(Enum.count(chain_draws))
-          end)
-
-        grand_mean = Enum.reduce(chain_means, 0, &(&1 + &2)) |> Kernel./(num_chains)
-
-        Enum.reduce(chain_means, 0, fn chain_mean, acc ->
-          diff = chain_mean - grand_mean
-          acc + diff * diff
-        end)
-        |> Kernel./(num_chains - 1)
-      end)
-
-    # Estimate the variance of the target distribution for each parameter
-    var_plus =
-      Enum.zip_with(w, b, fn w_val, b_val ->
-        ((num_chains - 1) * w_val + b_val) / num_chains
-      end)
-
-    # Calculate the potential scale reduction factor (Rhat) for each parameter
-    rhat =
-      Enum.zip_with(var_plus, w, fn var_plus_val, w_val ->
-        :math.sqrt(var_plus_val / (w_val + @epsilon))
-      end)
-
-    Enum.zip(constrained_param_names, rhat) |> Enum.into(%{})
+    end)
+    |> List.flatten()
   end
 end
