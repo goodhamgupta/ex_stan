@@ -364,38 +364,6 @@ fit = Model.sample(model, num_chains: 4, num_warmup: 1000, num_samples: 1000)
 ### Evaluation: Traceplot
 
 ```elixir
-tdf =
-  fit.draws
-  |> Nx.to_list()
-  |> Enum.with_index(fn elem, idx ->
-    Enum.with_index(elem, fn sample_val, sample_idx ->
-      Enum.with_index(sample_val, fn chain_val, chain_idx ->
-        %{
-          "param" => Enum.at(fit.feature_names, idx),
-          "value" => chain_val,
-          "chain_number" => chain_idx,
-          "sample_number" => sample_idx
-        }
-      end)
-    end)
-  end)
-  |> List.flatten()
-  |> DF.new()
-```
-
-<!-- livebook:{"output":true} -->
-
-```text
-#Explorer.DataFrame<
-  Polars[40000 x 4]
-  chain_number s64 [0, 1, 2, 3, 0, ...]
-  param string ["accept_stat__", "accept_stat__", "accept_stat__", "accept_stat__", "accept_stat__", ...]
-  sample_number s64 [0, 0, 0, 0, 1, ...]
-  value f64 [0.9758633971214294, 0.8902268409729004, 0.9749674797058105, 0.7589249610900879, 0.9554076790809631, ...]
->
-```
-
-```elixir
 fit_df = Fit.to_frame(fit)
 ```
 
@@ -440,21 +408,22 @@ Vl.new(width: 700, height: 400)
 
 ```elixir
 fit_df
-|> DF.select(fit.feature_names)
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```text
 #Explorer.DataFrame<
-  Polars[4000 x 10]
+  Polars[4000 x 12]
   accept_stat__ f64 [0.9758633971214294, 0.9554076790809631, 0.9894496202468872, 0.9977225661277771, 0.9962801933288574, ...]
   alpha f64 [1.9954274892807007, 1.9706697463989258, 1.620985507965088, 1.5696576833724976, 0.482232004404068, ...]
   beta f64 [-0.11603652685880661, -0.09523523598909378, -0.02528950944542885, -0.015749480575323105, 0.1924978792667389, ...]
+  chain_number s64 [1, 1, 1, 1, 1, ...]
   divergent__ f64 [0.0, 0.0, 0.0, 0.0, 0.0, ...]
   energy__ f64 [-53.853492736816406, -53.978511810302734, -56.09149169921875, -59.67557907104492, -58.7890510559082, ...]
   lp__ f64 [55.26900863647461, 56.95566177368164, 59.8419303894043, 60.280242919921875, 62.33438491821289, ...]
   n_leapfrog__ f64 [63.0, 15.0, 63.0, 11.0, 63.0, ...]
+  sample_number s64 [1, 2, 3, 4, 5, ...]
   sigma f64 [0.21115610003471375, 0.20797252655029297, 0.17774784564971924, 0.17800280451774597, 0.17427948117256165, ...]
   stepsize__ f64 [0.05552035942673683, 0.05552035942673683, 0.05552035942673683, 0.05552035942673683, 0.05552035942673683, ...]
   treedepth__ f64 [5.0, 3.0, 5.0, 3.0, 6.0, ...]

@@ -200,4 +200,5 @@ defmodule ExStan.Fit do
     |> List.flatten()
     |> DataFrame.new()
   end
+
 end
