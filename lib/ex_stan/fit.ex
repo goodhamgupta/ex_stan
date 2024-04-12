@@ -288,5 +288,4 @@ defmodule ExStan.Fit do
 
     Enum.zip(constrained_param_names, rhat) |> Enum.into(%{})
   end
-
 end
