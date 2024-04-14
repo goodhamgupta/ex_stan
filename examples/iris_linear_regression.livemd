@@ -575,37 +575,11 @@ predicted = Nx.multiply(beta_mean, x_tensor) |> Nx.add(alpha_mean)
 
 predicted_list = Nx.to_list(predicted)
 
-# Compute confidence intervals
-
-x_sim = Nx.linspace(4.5, 7, n: 50)
-{sigma_sim, _key} = Nx.Random.normal(key, 0, sigma_mean, shape: {50})
-predicted_sim = Nx.multiply(beta_mean, x_sim) |> Nx.add(alpha_mean)
-
-{gen_samples, _} = Nx.Random.normal(key, predicted_sim, sigma_sim, shape: {50, 50})
-
-lower_list =
-  gen_samples
-  |> Nx.to_list()
-  |> Enum.map(fn x ->
-    series = Explorer.Series.from_list(x)
-    series |> Explorer.Series.quantile(0.05)
-  end)
-
-upper_list =
-  gen_samples
-  |> Nx.to_list()
-  |> Enum.map(fn x ->
-    series = Explorer.Series.from_list(x)
-    series |> Explorer.Series.quantile(0.95)
-  end)
-
 result =
   DF.new(
     sepal_length: x,
     petal_length: y,
-    predicted: predicted_list,
-    lower_bound: lower_list,
-    upper_bound: upper_list
+    predicted: predicted_list
   )
   |> DF.to_rows()
 ```
@@ -614,336 +588,55 @@ result =
 
 ```
 [
-  %{
-    "lower_bound" => 3.3063318729400635,
-    "petal_length" => 4.7,
-    "predicted" => 4.987951755523682,
-    "sepal_length" => 7.0,
-    "upper_bound" => 5.091104984283447
-  },
-  %{
-    "lower_bound" => 3.4022512435913086,
-    "petal_length" => 4.5,
-    "predicted" => 4.5777668952941895,
-    "sepal_length" => 6.4,
-    "upper_bound" => 4.908385276794434
-  },
-  %{
-    "lower_bound" => 3.098463535308838,
-    "petal_length" => 4.9,
-    "predicted" => 4.9195876121521,
-    "sepal_length" => 6.9,
-    "upper_bound" => 5.327150344848633
-  },
-  %{
-    "lower_bound" => 3.3275914192199707,
-    "petal_length" => 4.0,
-    "predicted" => 3.9624900817871094,
-    "sepal_length" => 5.5,
-    "upper_bound" => 5.072366714477539
-  },
-  %{
-    "lower_bound" => 3.1499454975128174,
-    "petal_length" => 4.6,
-    "predicted" => 4.6461310386657715,
-    "sepal_length" => 6.5,
-    "upper_bound" => 4.849695205688477
-  },
-  %{
-    "lower_bound" => 3.268190860748291,
-    "petal_length" => 4.5,
-    "predicted" => 4.099217891693115,
-    "sepal_length" => 5.7,
-    "upper_bound" => 5.020838737487793
-  },
-  %{
-    "lower_bound" => 3.146211624145508,
-    "petal_length" => 4.7,
-    "predicted" => 4.509402751922607,
-    "sepal_length" => 6.3,
-    "upper_bound" => 4.924722194671631
-  },
-  %{
-    "lower_bound" => 3.3063347339630127,
-    "petal_length" => 3.3,
-    "predicted" => 3.552305221557617,
-    "sepal_length" => 4.9,
-    "upper_bound" => 5.169694423675537
-  },
-  %{
-    "lower_bound" => 3.309720993041992,
-    "petal_length" => 4.6,
-    "predicted" => 4.7144951820373535,
-    "sepal_length" => 6.6,
-    "upper_bound" => 5.04982328414917
-  },
-  %{
-    "lower_bound" => 3.2113969326019287,
-    "petal_length" => 3.9,
-    "predicted" => 3.757397413253784,
-    "sepal_length" => 5.2,
-    "upper_bound" => 5.00938606262207
-  },
-  %{
-    "lower_bound" => 3.247535228729248,
-    "petal_length" => 3.5,
-    "predicted" => 3.620669364929199,
-    "sepal_length" => 5.0,
-    "upper_bound" => 5.144867897033691
-  },
-  %{
-    "lower_bound" => 3.1106984615325928,
-    "petal_length" => 4.2,
-    "predicted" => 4.235946178436279,
-    "sepal_length" => 5.9,
-    "upper_bound" => 5.013782978057861
-  },
-  %{
-    "lower_bound" => 3.309760570526123,
-    "petal_length" => 4.0,
-    "predicted" => 4.304310321807861,
-    "sepal_length" => 6.0,
-    "upper_bound" => 5.30028772354126
-  },
-  %{
-    "lower_bound" => 3.253216505050659,
-    "petal_length" => 4.7,
-    "predicted" => 4.372674465179443,
-    "sepal_length" => 6.1,
-    "upper_bound" => 5.040051460266113
-  },
-  %{
-    "lower_bound" => 3.000256299972534,
-    "petal_length" => 3.6,
-    "predicted" => 4.030853748321533,
-    "sepal_length" => 5.6,
-    "upper_bound" => 4.920816421508789
-  },
-  %{
-    "lower_bound" => 3.2457892894744873,
-    "petal_length" => 4.4,
-    "predicted" => 4.7828593254089355,
-    "sepal_length" => 6.7,
-    "upper_bound" => 4.982665538787842
-  },
-  %{
-    "lower_bound" => 3.2834975719451904,
-    "petal_length" => 4.5,
-    "predicted" => 4.030853748321533,
-    "sepal_length" => 5.6,
-    "upper_bound" => 5.19598388671875
-  },
-  %{
-    "lower_bound" => 3.2834877967834473,
-    "petal_length" => 4.1,
-    "predicted" => 4.1675825119018555,
-    "sepal_length" => 5.8,
-    "upper_bound" => 5.136085033416748
-  },
-  %{
-    "lower_bound" => 3.0944128036499023,
-    "petal_length" => 4.5,
-    "predicted" => 4.441038608551025,
-    "sepal_length" => 6.2,
-    "upper_bound" => 4.869663715362549
-  },
-  %{
-    "lower_bound" => 3.214677095413208,
-    "petal_length" => 3.9,
-    "predicted" => 4.030853748321533,
-    "sepal_length" => 5.6,
-    "upper_bound" => 5.12005090713501
-  },
-  %{
-    "lower_bound" => 3.3717617988586426,
-    "petal_length" => 4.8,
-    "predicted" => 4.235946178436279,
-    "sepal_length" => 5.9,
-    "upper_bound" => 5.231283187866211
-  },
-  %{
-    "lower_bound" => 3.2946982383728027,
-    "petal_length" => 4.0,
-    "predicted" => 4.372674465179443,
-    "sepal_length" => 6.1,
-    "upper_bound" => 4.960571765899658
-  },
-  %{
-    "lower_bound" => 3.1465845108032227,
-    "petal_length" => 4.9,
-    "predicted" => 4.509402751922607,
-    "sepal_length" => 6.3,
-    "upper_bound" => 5.109139442443848
-  },
-  %{
-    "lower_bound" => 3.04555344581604,
-    "petal_length" => 4.7,
-    "predicted" => 4.372674465179443,
-    "sepal_length" => 6.1,
-    "upper_bound" => 5.011319637298584
-  },
-  %{
-    "lower_bound" => 3.3222575187683105,
-    "petal_length" => 4.3,
-    "predicted" => 4.5777668952941895,
-    "sepal_length" => 6.4,
-    "upper_bound" => 5.373564720153809
-  },
-  %{
-    "lower_bound" => 3.2273740768432617,
-    "petal_length" => 4.4,
-    "predicted" => 4.7144951820373535,
-    "sepal_length" => 6.6,
-    "upper_bound" => 4.993063449859619
-  },
-  %{
-    "lower_bound" => 3.1848108768463135,
-    "petal_length" => 4.8,
-    "predicted" => 4.851223468780518,
-    "sepal_length" => 6.8,
-    "upper_bound" => 5.236720561981201
-  },
-  %{
-    "lower_bound" => 3.2848763465881348,
-    "petal_length" => 5.0,
-    "predicted" => 4.7828593254089355,
-    "sepal_length" => 6.7,
-    "upper_bound" => 4.879901885986328
-  },
-  %{
-    "lower_bound" => 2.9075615406036377,
-    "petal_length" => 4.5,
-    "predicted" => 4.304310321807861,
-    "sepal_length" => 6.0,
-    "upper_bound" => 5.173469543457031
-  },
-  %{
-    "lower_bound" => 3.3058269023895264,
-    "petal_length" => 3.5,
-    "predicted" => 4.099217891693115,
-    "sepal_length" => 5.7,
-    "upper_bound" => 4.924738883972168
-  },
-  %{
-    "lower_bound" => 3.1569042205810547,
-    "petal_length" => 3.8,
-    "predicted" => 3.9624900817871094,
-    "sepal_length" => 5.5,
-    "upper_bound" => 5.023273944854736
-  },
-  %{
-    "lower_bound" => 3.142564535140991,
-    "petal_length" => 3.7,
-    "predicted" => 3.9624900817871094,
-    "sepal_length" => 5.5,
-    "upper_bound" => 4.978549957275391
-  },
-  %{
-    "lower_bound" => 3.094770908355713,
-    "petal_length" => 3.9,
-    "predicted" => 4.1675825119018555,
-    "sepal_length" => 5.8,
-    "upper_bound" => 5.003417015075684
-  },
-  %{
-    "lower_bound" => 3.2419285774230957,
-    "petal_length" => 5.1,
-    "predicted" => 4.304310321807861,
-    "sepal_length" => 6.0,
-    "upper_bound" => 4.881082534790039
-  },
-  %{
-    "lower_bound" => 3.2826035022735596,
-    "petal_length" => 4.5,
-    "predicted" => 3.8941259384155273,
-    "sepal_length" => 5.4,
-    "upper_bound" => 5.149425506591797
-  },
-  %{
-    "lower_bound" => 3.1689987182617188,
-    "petal_length" => 4.5,
-    "predicted" => 4.304310321807861,
-    "sepal_length" => 6.0,
-    "upper_bound" => 4.9185075759887695
-  },
-  %{
-    "lower_bound" => 3.0375874042510986,
-    "petal_length" => 4.7,
-    "predicted" => 4.7828593254089355,
-    "sepal_length" => 6.7,
-    "upper_bound" => 4.945702075958252
-  },
-  %{
-    "lower_bound" => 3.2947423458099365,
-    "petal_length" => 4.4,
-    "predicted" => 4.509402751922607,
-    "sepal_length" => 6.3,
-    "upper_bound" => 4.894923686981201
-  },
-  %{
-    "lower_bound" => 3.051201343536377,
-    "petal_length" => 4.1,
-    "predicted" => 4.030853748321533,
-    "sepal_length" => 5.6,
-    "upper_bound" => 5.0980682373046875
-  },
-  %{
-    "lower_bound" => 2.8458776473999023,
-    "petal_length" => 4.0,
-    "predicted" => 3.9624900817871094,
-    "sepal_length" => 5.5,
-    "upper_bound" => 5.46558952331543
-  },
-  %{
-    "lower_bound" => 3.129066228866577,
-    "petal_length" => 4.4,
-    "predicted" => 3.9624900817871094,
-    "sepal_length" => 5.5,
-    "upper_bound" => 4.972442150115967
-  },
-  %{
-    "lower_bound" => 3.1208648681640625,
-    "petal_length" => 4.6,
-    "predicted" => 4.372674465179443,
-    "sepal_length" => 6.1,
-    "upper_bound" => 5.058709621429443
-  },
-  %{
-    "lower_bound" => 3.2742958068847656,
-    "petal_length" => 4.0,
-    "predicted" => 4.1675825119018555,
-    "sepal_length" => 5.8,
-    "upper_bound" => 5.064157485961914
-  },
-  %{
-    "lower_bound" => 3.2171101570129395,
-    "petal_length" => 3.3,
-    "predicted" => 3.620669364929199,
-    "sepal_length" => 5.0,
-    "upper_bound" => 5.058066368103027
-  },
-  %{
-    "lower_bound" => 3.1107287406921387,
-    "petal_length" => 4.2,
-    "predicted" => 4.030853748321533,
-    "sepal_length" => 5.6,
-    "upper_bound" => 4.945778846740723
-  },
-  %{
-    "lower_bound" => 3.3267934322357178,
-    "petal_length" => 4.2,
-    "predicted" => 4.099217891693115,
-    "sepal_length" => 5.7,
-    ...
-  },
-  %{
-    "lower_bound" => 3.281681776046753,
-    "petal_length" => 4.2,
-    "predicted" => 4.099217891693115,
-    ...
-  },
-  %{"lower_bound" => 3.1942248344421387, "petal_length" => 4.3, ...},
-  %{"lower_bound" => 2.9662790298461914, ...},
+  %{"petal_length" => 4.7, "predicted" => 4.987951755523682, "sepal_length" => 7.0},
+  %{"petal_length" => 4.5, "predicted" => 4.5777668952941895, "sepal_length" => 6.4},
+  %{"petal_length" => 4.9, "predicted" => 4.9195876121521, "sepal_length" => 6.9},
+  %{"petal_length" => 4.0, "predicted" => 3.9624900817871094, "sepal_length" => 5.5},
+  %{"petal_length" => 4.6, "predicted" => 4.6461310386657715, "sepal_length" => 6.5},
+  %{"petal_length" => 4.5, "predicted" => 4.099217891693115, "sepal_length" => 5.7},
+  %{"petal_length" => 4.7, "predicted" => 4.509402751922607, "sepal_length" => 6.3},
+  %{"petal_length" => 3.3, "predicted" => 3.552305221557617, "sepal_length" => 4.9},
+  %{"petal_length" => 4.6, "predicted" => 4.7144951820373535, "sepal_length" => 6.6},
+  %{"petal_length" => 3.9, "predicted" => 3.757397413253784, "sepal_length" => 5.2},
+  %{"petal_length" => 3.5, "predicted" => 3.620669364929199, "sepal_length" => 5.0},
+  %{"petal_length" => 4.2, "predicted" => 4.235946178436279, "sepal_length" => 5.9},
+  %{"petal_length" => 4.0, "predicted" => 4.304310321807861, "sepal_length" => 6.0},
+  %{"petal_length" => 4.7, "predicted" => 4.372674465179443, "sepal_length" => 6.1},
+  %{"petal_length" => 3.6, "predicted" => 4.030853748321533, "sepal_length" => 5.6},
+  %{"petal_length" => 4.4, "predicted" => 4.7828593254089355, "sepal_length" => 6.7},
+  %{"petal_length" => 4.5, "predicted" => 4.030853748321533, "sepal_length" => 5.6},
+  %{"petal_length" => 4.1, "predicted" => 4.1675825119018555, "sepal_length" => 5.8},
+  %{"petal_length" => 4.5, "predicted" => 4.441038608551025, "sepal_length" => 6.2},
+  %{"petal_length" => 3.9, "predicted" => 4.030853748321533, "sepal_length" => 5.6},
+  %{"petal_length" => 4.8, "predicted" => 4.235946178436279, "sepal_length" => 5.9},
+  %{"petal_length" => 4.0, "predicted" => 4.372674465179443, "sepal_length" => 6.1},
+  %{"petal_length" => 4.9, "predicted" => 4.509402751922607, "sepal_length" => 6.3},
+  %{"petal_length" => 4.7, "predicted" => 4.372674465179443, "sepal_length" => 6.1},
+  %{"petal_length" => 4.3, "predicted" => 4.5777668952941895, "sepal_length" => 6.4},
+  %{"petal_length" => 4.4, "predicted" => 4.7144951820373535, "sepal_length" => 6.6},
+  %{"petal_length" => 4.8, "predicted" => 4.851223468780518, "sepal_length" => 6.8},
+  %{"petal_length" => 5.0, "predicted" => 4.7828593254089355, "sepal_length" => 6.7},
+  %{"petal_length" => 4.5, "predicted" => 4.304310321807861, "sepal_length" => 6.0},
+  %{"petal_length" => 3.5, "predicted" => 4.099217891693115, "sepal_length" => 5.7},
+  %{"petal_length" => 3.8, "predicted" => 3.9624900817871094, "sepal_length" => 5.5},
+  %{"petal_length" => 3.7, "predicted" => 3.9624900817871094, "sepal_length" => 5.5},
+  %{"petal_length" => 3.9, "predicted" => 4.1675825119018555, "sepal_length" => 5.8},
+  %{"petal_length" => 5.1, "predicted" => 4.304310321807861, "sepal_length" => 6.0},
+  %{"petal_length" => 4.5, "predicted" => 3.8941259384155273, "sepal_length" => 5.4},
+  %{"petal_length" => 4.5, "predicted" => 4.304310321807861, "sepal_length" => 6.0},
+  %{"petal_length" => 4.7, "predicted" => 4.7828593254089355, "sepal_length" => 6.7},
+  %{"petal_length" => 4.4, "predicted" => 4.509402751922607, "sepal_length" => 6.3},
+  %{"petal_length" => 4.1, "predicted" => 4.030853748321533, "sepal_length" => 5.6},
+  %{"petal_length" => 4.0, "predicted" => 3.9624900817871094, "sepal_length" => 5.5},
+  %{"petal_length" => 4.4, "predicted" => 3.9624900817871094, "sepal_length" => 5.5},
+  %{"petal_length" => 4.6, "predicted" => 4.372674465179443, "sepal_length" => 6.1},
+  %{"petal_length" => 4.0, "predicted" => 4.1675825119018555, "sepal_length" => 5.8},
+  %{"petal_length" => 3.3, "predicted" => 3.620669364929199, "sepal_length" => 5.0},
+  %{"petal_length" => 4.2, "predicted" => 4.030853748321533, "sepal_length" => 5.6},
+  %{"petal_length" => 4.2, "predicted" => 4.099217891693115, "sepal_length" => 5.7},
+  %{"petal_length" => 4.2, "predicted" => 4.099217891693115, "sepal_length" => 5.7},
+  %{"petal_length" => 4.3, "predicted" => 4.441038608551025, ...},
+  %{"petal_length" => 3.0, ...},
   %{...}
 ]
 ```
@@ -959,19 +652,785 @@ Vl.new(width: 700, height: 300, title: "Linear Regression Plot")
   Vl.new()
   |> Vl.mark(:line)
   |> Vl.encode_field(:y, "predicted", type: :quantitative, aggregate: :mean)
-  # Vl.new()
-  # |> Vl.mark(:line)
-  # |> Vl.encode_field(:y, "lower_bound", type: :quantitative, aggregate: :mean),
-  # Vl.new()
-  # |> Vl.mark(:line)
-  # |> Vl.encode_field(:y, "upper_bound", type: :quantitative, aggregate: :mean),
 ])
 ```
 
 <!-- livebook:{"output":true} -->
 
 ```vega-lite
-{"$schema":"https://vega.github.io/schema/vega-lite/v5.json","data":{"values":[{"lower_bound":3.3063318729400635,"petal_length":4.7,"predicted":4.987951755523682,"sepal_length":7.0,"upper_bound":5.091104984283447},{"lower_bound":3.4022512435913086,"petal_length":4.5,"predicted":4.5777668952941895,"sepal_length":6.4,"upper_bound":4.908385276794434},{"lower_bound":3.098463535308838,"petal_length":4.9,"predicted":4.9195876121521,"sepal_length":6.9,"upper_bound":5.327150344848633},{"lower_bound":3.3275914192199707,"petal_length":4.0,"predicted":3.9624900817871094,"sepal_length":5.5,"upper_bound":5.072366714477539},{"lower_bound":3.1499454975128174,"petal_length":4.6,"predicted":4.6461310386657715,"sepal_length":6.5,"upper_bound":4.849695205688477},{"lower_bound":3.268190860748291,"petal_length":4.5,"predicted":4.099217891693115,"sepal_length":5.7,"upper_bound":5.020838737487793},{"lower_bound":3.146211624145508,"petal_length":4.7,"predicted":4.509402751922607,"sepal_length":6.3,"upper_bound":4.924722194671631},{"lower_bound":3.3063347339630127,"petal_length":3.3,"predicted":3.552305221557617,"sepal_length":4.9,"upper_bound":5.169694423675537},{"lower_bound":3.309720993041992,"petal_length":4.6,"predicted":4.7144951820373535,"sepal_length":6.6,"upper_bound":5.04982328414917},{"lower_bound":3.2113969326019287,"petal_length":3.9,"predicted":3.757397413253784,"sepal_length":5.2,"upper_bound":5.00938606262207},{"lower_bound":3.247535228729248,"petal_length":3.5,"predicted":3.620669364929199,"sepal_length":5.0,"upper_bound":5.144867897033691},{"lower_bound":3.1106984615325928,"petal_length":4.2,"predicted":4.235946178436279,"sepal_length":5.9,"upper_bound":5.013782978057861},{"lower_bound":3.309760570526123,"petal_length":4.0,"predicted":4.304310321807861,"sepal_length":6.0,"upper_bound":5.30028772354126},{"lower_bound":3.253216505050659,"petal_length":4.7,"predicted":4.372674465179443,"sepal_length":6.1,"upper_bound":5.040051460266113},{"lower_bound":3.000256299972534,"petal_length":3.6,"predicted":4.030853748321533,"sepal_length":5.6,"upper_bound":4.920816421508789},{"lower_bound":3.2457892894744873,"petal_length":4.4,"predicted":4.7828593254089355,"sepal_length":6.7,"upper_bound":4.982665538787842},{"lower_bound":3.2834975719451904,"petal_length":4.5,"predicted":4.030853748321533,"sepal_length":5.6,"upper_bound":5.19598388671875},{"lower_bound":3.2834877967834473,"petal_length":4.1,"predicted":4.1675825119018555,"sepal_length":5.8,"upper_bound":5.136085033416748},{"lower_bound":3.0944128036499023,"petal_length":4.5,"predicted":4.441038608551025,"sepal_length":6.2,"upper_bound":4.869663715362549},{"lower_bound":3.214677095413208,"petal_length":3.9,"predicted":4.030853748321533,"sepal_length":5.6,"upper_bound":5.12005090713501},{"lower_bound":3.3717617988586426,"petal_length":4.8,"predicted":4.235946178436279,"sepal_length":5.9,"upper_bound":5.231283187866211},{"lower_bound":3.2946982383728027,"petal_length":4.0,"predicted":4.372674465179443,"sepal_length":6.1,"upper_bound":4.960571765899658},{"lower_bound":3.1465845108032227,"petal_length":4.9,"predicted":4.509402751922607,"sepal_length":6.3,"upper_bound":5.109139442443848},{"lower_bound":3.04555344581604,"petal_length":4.7,"predicted":4.372674465179443,"sepal_length":6.1,"upper_bound":5.011319637298584},{"lower_bound":3.3222575187683105,"petal_length":4.3,"predicted":4.5777668952941895,"sepal_length":6.4,"upper_bound":5.373564720153809},{"lower_bound":3.2273740768432617,"petal_length":4.4,"predicted":4.7144951820373535,"sepal_length":6.6,"upper_bound":4.993063449859619},{"lower_bound":3.1848108768463135,"petal_length":4.8,"predicted":4.851223468780518,"sepal_length":6.8,"upper_bound":5.236720561981201},{"lower_bound":3.2848763465881348,"petal_length":5.0,"predicted":4.7828593254089355,"sepal_length":6.7,"upper_bound":4.879901885986328},{"lower_bound":2.9075615406036377,"petal_length":4.5,"predicted":4.304310321807861,"sepal_length":6.0,"upper_bound":5.173469543457031},{"lower_bound":3.3058269023895264,"petal_length":3.5,"predicted":4.099217891693115,"sepal_length":5.7,"upper_bound":4.924738883972168},{"lower_bound":3.1569042205810547,"petal_length":3.8,"predicted":3.9624900817871094,"sepal_length":5.5,"upper_bound":5.023273944854736},{"lower_bound":3.142564535140991,"petal_length":3.7,"predicted":3.9624900817871094,"sepal_length":5.5,"upper_bound":4.978549957275391},{"lower_bound":3.094770908355713,"petal_length":3.9,"predicted":4.1675825119018555,"sepal_length":5.8,"upper_bound":5.003417015075684},{"lower_bound":3.2419285774230957,"petal_length":5.1,"predicted":4.304310321807861,"sepal_length":6.0,"upper_bound":4.881082534790039},{"lower_bound":3.2826035022735596,"petal_length":4.5,"predicted":3.8941259384155273,"sepal_length":5.4,"upper_bound":5.149425506591797},{"lower_bound":3.1689987182617188,"petal_length":4.5,"predicted":4.304310321807861,"sepal_length":6.0,"upper_bound":4.9185075759887695},{"lower_bound":3.0375874042510986,"petal_length":4.7,"predicted":4.7828593254089355,"sepal_length":6.7,"upper_bound":4.945702075958252},{"lower_bound":3.2947423458099365,"petal_length":4.4,"predicted":4.509402751922607,"sepal_length":6.3,"upper_bound":4.894923686981201},{"lower_bound":3.051201343536377,"petal_length":4.1,"predicted":4.030853748321533,"sepal_length":5.6,"upper_bound":5.0980682373046875},{"lower_bound":2.8458776473999023,"petal_length":4.0,"predicted":3.9624900817871094,"sepal_length":5.5,"upper_bound":5.46558952331543},{"lower_bound":3.129066228866577,"petal_length":4.4,"predicted":3.9624900817871094,"sepal_length":5.5,"upper_bound":4.972442150115967},{"lower_bound":3.1208648681640625,"petal_length":4.6,"predicted":4.372674465179443,"sepal_length":6.1,"upper_bound":5.058709621429443},{"lower_bound":3.2742958068847656,"petal_length":4.0,"predicted":4.1675825119018555,"sepal_length":5.8,"upper_bound":5.064157485961914},{"lower_bound":3.2171101570129395,"petal_length":3.3,"predicted":3.620669364929199,"sepal_length":5.0,"upper_bound":5.058066368103027},{"lower_bound":3.1107287406921387,"petal_length":4.2,"predicted":4.030853748321533,"sepal_length":5.6,"upper_bound":4.945778846740723},{"lower_bound":3.3267934322357178,"petal_length":4.2,"predicted":4.099217891693115,"sepal_length":5.7,"upper_bound":5.419684410095215},{"lower_bound":3.281681776046753,"petal_length":4.2,"predicted":4.099217891693115,"sepal_length":5.7,"upper_bound":5.19728422164917},{"lower_bound":3.1942248344421387,"petal_length":4.3,"predicted":4.441038608551025,"sepal_length":6.2,"upper_bound":5.182744979858398},{"lower_bound":2.9662790298461914,"petal_length":3.0,"predicted":3.689033269882202,"sepal_length":5.1,"upper_bound":4.832496643066406},{"lower_bound":3.2890689373016357,"petal_length":4.1,"predicted":4.099217891693115,"sepal_length":5.7,"upper_bound":4.921355724334717}]},"encoding":{"x":{"field":"sepal_length","scale":{"domain":[4.5,7.5]},"type":"quantitative"}},"height":300,"layer":[{"encoding":{"y":{"field":"petal_length","scale":{"domain":[0.5,6.5]},"type":"quantitative"}},"mark":{"shape":"square","type":"point"}},{"encoding":{"y":{"aggregate":"mean","field":"predicted","type":"quantitative"}},"mark":"line"}],"title":"Linear Regression Plot","width":700}
+{"$schema":"https://vega.github.io/schema/vega-lite/v5.json","data":{"values":[{"petal_length":4.7,"predicted":4.987951755523682,"sepal_length":7.0},{"petal_length":4.5,"predicted":4.5777668952941895,"sepal_length":6.4},{"petal_length":4.9,"predicted":4.9195876121521,"sepal_length":6.9},{"petal_length":4.0,"predicted":3.9624900817871094,"sepal_length":5.5},{"petal_length":4.6,"predicted":4.6461310386657715,"sepal_length":6.5},{"petal_length":4.5,"predicted":4.099217891693115,"sepal_length":5.7},{"petal_length":4.7,"predicted":4.509402751922607,"sepal_length":6.3},{"petal_length":3.3,"predicted":3.552305221557617,"sepal_length":4.9},{"petal_length":4.6,"predicted":4.7144951820373535,"sepal_length":6.6},{"petal_length":3.9,"predicted":3.757397413253784,"sepal_length":5.2},{"petal_length":3.5,"predicted":3.620669364929199,"sepal_length":5.0},{"petal_length":4.2,"predicted":4.235946178436279,"sepal_length":5.9},{"petal_length":4.0,"predicted":4.304310321807861,"sepal_length":6.0},{"petal_length":4.7,"predicted":4.372674465179443,"sepal_length":6.1},{"petal_length":3.6,"predicted":4.030853748321533,"sepal_length":5.6},{"petal_length":4.4,"predicted":4.7828593254089355,"sepal_length":6.7},{"petal_length":4.5,"predicted":4.030853748321533,"sepal_length":5.6},{"petal_length":4.1,"predicted":4.1675825119018555,"sepal_length":5.8},{"petal_length":4.5,"predicted":4.441038608551025,"sepal_length":6.2},{"petal_length":3.9,"predicted":4.030853748321533,"sepal_length":5.6},{"petal_length":4.8,"predicted":4.235946178436279,"sepal_length":5.9},{"petal_length":4.0,"predicted":4.372674465179443,"sepal_length":6.1},{"petal_length":4.9,"predicted":4.509402751922607,"sepal_length":6.3},{"petal_length":4.7,"predicted":4.372674465179443,"sepal_length":6.1},{"petal_length":4.3,"predicted":4.5777668952941895,"sepal_length":6.4},{"petal_length":4.4,"predicted":4.7144951820373535,"sepal_length":6.6},{"petal_length":4.8,"predicted":4.851223468780518,"sepal_length":6.8},{"petal_length":5.0,"predicted":4.7828593254089355,"sepal_length":6.7},{"petal_length":4.5,"predicted":4.304310321807861,"sepal_length":6.0},{"petal_length":3.5,"predicted":4.099217891693115,"sepal_length":5.7},{"petal_length":3.8,"predicted":3.9624900817871094,"sepal_length":5.5},{"petal_length":3.7,"predicted":3.9624900817871094,"sepal_length":5.5},{"petal_length":3.9,"predicted":4.1675825119018555,"sepal_length":5.8},{"petal_length":5.1,"predicted":4.304310321807861,"sepal_length":6.0},{"petal_length":4.5,"predicted":3.8941259384155273,"sepal_length":5.4},{"petal_length":4.5,"predicted":4.304310321807861,"sepal_length":6.0},{"petal_length":4.7,"predicted":4.7828593254089355,"sepal_length":6.7},{"petal_length":4.4,"predicted":4.509402751922607,"sepal_length":6.3},{"petal_length":4.1,"predicted":4.030853748321533,"sepal_length":5.6},{"petal_length":4.0,"predicted":3.9624900817871094,"sepal_length":5.5},{"petal_length":4.4,"predicted":3.9624900817871094,"sepal_length":5.5},{"petal_length":4.6,"predicted":4.372674465179443,"sepal_length":6.1},{"petal_length":4.0,"predicted":4.1675825119018555,"sepal_length":5.8},{"petal_length":3.3,"predicted":3.620669364929199,"sepal_length":5.0},{"petal_length":4.2,"predicted":4.030853748321533,"sepal_length":5.6},{"petal_length":4.2,"predicted":4.099217891693115,"sepal_length":5.7},{"petal_length":4.2,"predicted":4.099217891693115,"sepal_length":5.7},{"petal_length":4.3,"predicted":4.441038608551025,"sepal_length":6.2},{"petal_length":3.0,"predicted":3.689033269882202,"sepal_length":5.1},{"petal_length":4.1,"predicted":4.099217891693115,"sepal_length":5.7}]},"encoding":{"x":{"field":"sepal_length","scale":{"domain":[4.5,7.5]},"type":"quantitative"}},"height":300,"layer":[{"encoding":{"y":{"field":"petal_length","scale":{"domain":[0.5,6.5]},"type":"quantitative"}},"mark":{"shape":"square","type":"point"}},{"encoding":{"y":{"aggregate":"mean","field":"predicted","type":"quantitative"}},"mark":"line"}],"title":"Linear Regression Plot","width":700}
 ```
 
-## Confidence Intervals
+## Posterior Predictive Checks
+
+Here, we will aim simulate data from our posterior distribution. From Stan's documentation:
+
+> Posterior predictive checks are a way of measuring whether a model does a good job of capturing relevant aspects of the data, such as means, standard deviations, and quantiles (Rubin 1984; Andrew Gelman, Meng, and Stern 1996). Posterior predictive checking works by simulating new replicated data sets based on the fitted model parameters and then comparing statistics applied to the replicated data set with the same statistic applied to the original data set.
+
+We will aim to do this with Stan, using the `generated_quantities` block.
+
+```elixir
+ppc_model_code = ~S"""
+data {
+  int<lower=0> N; // number of points
+  vector[N] x; // sepal length i.e covariate
+  vector[N] y; // petal length i.e variate
+}
+
+parameters {
+  real alpha; // intercept
+  real beta; // slope
+  real<lower=0> sigma; //scatter
+}
+
+model {
+  // priors
+  alpha ~ normal(0, 10);
+  beta ~ normal(0, 10);
+  sigma ~ normal(0, 1);
+
+  // likelihood
+  y ~ normal(alpha + beta * x, sigma); 
+}
+
+generated quantities {
+  vector[N] y_sim; // simulated data from posterior
+
+  for (i in 1:N)
+      y_sim[i] = normal_rng(alpha + beta * x[i], sigma);
+}
+"""
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+"data {\n  int<lower=0> N; // number of points\n  vector[N] x; // sepal length i.e covariate\n  vector[N] y; // petal length i.e variate\n}\n\nparameters {\n  real alpha; // intercept\n  real beta; // slope\n  real<lower=0> sigma; //scatter\n}\n\nmodel {\n  // priors\n  alpha ~ normal(0, 10);\n  beta ~ normal(0, 10);\n  sigma ~ normal(0, 1);\n\n  // likelihood\n  y ~ normal(alpha + beta * x, sigma); \n}\n\ngenerated quantities {\n  vector[N] y_sim; // simulated data from posterior\n\n  for (i in 1:N)\n      y_sim[i] = normal_rng(alpha + beta * x[i], sigma);\n}\n"
+```
+
+```elixir
+ppc_model = ExStan.build(ppc_model_code, data)
+ppc_fit = Model.sample(ppc_model, num_samples: 1000, num_chains: 1000)
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+
+16:39:45.124 [info] Building model..
+
+16:39:45.124 [debug] POST http://localhost:8080/v1/models
+
+16:39:45.130 [info] Model created
+
+16:39:45.130 [info] Messages from stanc: 
+
+16:39:45.130 [debug] POST http://localhost:8080/v1/models/4fz34g6a/params
+
+16:39:45.133 [info] `chain` id is set automatically.
+
+16:39:45.134 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:45.136 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:45.164 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:45.413 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:45.584 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:45.762 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:45.916 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:46.074 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:46.236 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:46.404 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:46.584 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:46.757 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:46.916 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:47.083 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:47.111 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:47.344 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:47.528 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:47.716 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:47.876 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:48.054 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:48.219 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:48.384 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:48.547 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:48.718 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:48.750 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:48.975 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:49.156 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:49.328 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:49.477 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:49.634 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:49.662 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:49.909 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:50.094 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:50.283 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:50.439 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:50.609 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:50.782 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:50.959 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:51.128 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:51.292 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:51.461 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:51.632 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:51.670 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:51.915 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:52.120 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:52.274 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:52.441 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:52.609 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:52.781 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:52.946 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:53.116 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:53.283 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:53.453 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:53.611 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:53.772 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:53.939 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:54.102 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:54.266 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:54.441 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:54.607 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:54.778 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:54.932 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:55.113 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:55.287 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:55.458 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:55.620 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:55.790 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:55.956 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:56.117 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:56.281 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:56.458 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:56.622 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:56.787 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:56.965 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:57.128 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:57.296 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:57.469 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:57.643 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:57.806 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:57.833 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:58.077 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:58.272 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:58.420 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:58.448 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:58.734 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:58.911 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:59.084 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:59.235 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:59.405 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:59.584 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:59.754 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:39:59.926 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:00.098 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:00.264 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:00.431 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:00.602 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:00.768 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:00.941 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:01.114 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:01.290 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:01.456 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:01.622 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:01.782 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:01.957 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:02.113 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:02.279 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:02.440 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:02.620 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:02.784 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:02.961 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:03.133 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:03.307 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:03.473 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:03.643 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:03.819 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:03.979 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:04.142 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:04.309 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:04.476 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:04.649 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:04.814 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:04.980 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:05.139 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:05.306 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:05.481 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:05.651 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:05.813 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:05.968 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:06.142 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:06.321 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:06.494 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:06.657 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:06.822 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:06.986 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:07.154 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:07.318 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:07.479 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:07.506 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:07.759 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:07.957 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:08.108 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:08.279 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:08.435 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:08.608 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:08.776 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:08.930 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:09.099 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:09.259 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:09.287 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:09.520 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:09.702 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:09.895 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:10.057 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:10.235 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:10.403 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:10.565 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:10.593 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:10.834 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:11.009 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:11.202 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:11.349 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:11.515 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:11.684 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:11.850 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:12.017 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:12.202 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:12.363 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:12.512 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:12.676 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:12.704 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:12.996 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:13.172 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:13.345 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:13.505 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:13.669 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:13.843 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:14.007 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:14.173 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:14.340 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:14.523 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:14.692 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:14.865 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:15.028 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:15.056 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:15.297 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:15.469 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:15.620 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:15.782 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:15.956 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:16.108 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:16.278 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:16.457 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:16.633 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:16.795 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:16.953 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:17.124 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:17.284 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:17.447 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:17.607 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:17.776 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:17.940 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:18.106 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:18.281 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:18.437 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:18.623 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:18.789 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:18.959 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:19.122 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:19.287 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:19.447 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:19.619 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:19.792 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:19.957 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:20.124 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:20.151 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:20.430 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:20.618 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:20.790 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:20.944 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:21.112 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:21.296 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:21.461 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:21.637 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:21.806 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:21.960 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:22.138 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:22.305 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:22.476 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:22.650 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:22.815 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:22.983 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:23.153 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:23.324 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:23.517 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:23.680 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:23.849 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:24.014 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:24.180 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:24.354 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:24.529 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:24.696 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:24.861 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:25.024 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:25.190 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:25.351 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:25.517 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:25.676 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:25.842 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:26.013 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:26.174 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:26.346 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:26.516 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:26.704 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:26.866 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:27.025 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:27.187 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:27.351 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:27.514 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:27.682 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:27.845 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:28.004 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:28.173 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:28.351 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:28.521 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:28.685 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:28.844 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:29.008 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:29.171 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:29.338 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:29.500 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:29.677 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:29.847 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:30.029 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:30.199 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:30.227 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:30.478 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:30.656 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:30.823 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:30.990 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:31.173 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:31.318 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:31.482 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:31.641 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:31.798 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:31.973 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:32.143 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:32.309 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:32.484 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:32.649 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:32.818 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:32.984 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:33.162 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:33.338 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:33.499 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:33.669 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:33.841 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:34.015 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:34.179 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:34.334 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:34.504 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:34.667 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:34.838 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:35.005 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:35.033 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:35.320 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:35.503 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:35.675 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:35.818 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:35.977 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:36.153 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:36.334 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:36.507 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:36.684 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:36.852 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:37.012 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:37.175 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:37.203 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:37.477 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:37.666 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:37.843 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:38.000 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:38.172 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:38.344 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:38.516 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:38.689 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:38.852 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:39.030 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:39.208 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:39.371 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:39.535 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:39.704 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:39.869 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:40.036 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:40.198 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:40.360 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:40.531 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:40.690 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:40.846 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:41.009 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:41.180 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:41.346 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:41.504 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:41.670 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:41.838 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:41.996 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:42.176 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:42.352 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:42.515 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:42.683 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:42.843 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:43.027 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+16:40:43.190 [debug] POST http://localhost:8080/v1/models/4fz34g6a/fits
+
+```
