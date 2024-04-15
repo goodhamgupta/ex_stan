@@ -2,7 +2,7 @@ defmodule ExStan.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @repo_url "https://github.com/nx-probability/ex_stan/"
+  @repo_url "https://github.com/goodhamgupta/ex_stan/"
 
   def project do
     [
