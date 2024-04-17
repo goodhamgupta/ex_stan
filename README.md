@@ -23,6 +23,8 @@ end
 
 ExStan requires the [httpstan](https://github.com/stan-dev/httpstan/) package to facilitate communication with the Stan compiler via the httpstan server. Installation methods vary by operating system: for most systems, `httpstan` can be installed using `pip`, while MacOS users must compile it from the source code.
 
+Follow the tutorial in the file [Iris: Linear Regression](./examples/iris_linear_regression.livemd) to get started with ExStan!
+
 
 ## Credits
 
