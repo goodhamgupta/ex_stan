@@ -25,6 +25,10 @@ ExStan requires the [httpstan](https://github.com/stan-dev/httpstan/) package to
 
 Follow the tutorial in the file [Iris: Linear Regression](./examples/iris_linear_regression.livemd) to get started with ExStan!
 
+## Status
+
+While the core APIs have been implemented, this library is not yet production-grade, as it's missing many utility functions. We aim to add suport for them in the future releases.
+
 
 ## Credits
 
